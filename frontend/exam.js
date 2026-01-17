@@ -24,6 +24,12 @@ function startExam() {
 // STOP EXAM
 // =====================
 function stopExam() {
+    // Check if exam is actually running
+    if (!examRunning) {
+        showNotification("Cannot stop exam - exam is not started yet!", "error");
+        return;
+    }
+    
     fetch("http://127.0.0.1:5000/stop_exam")
         .then(() => {
             examRunning = false;

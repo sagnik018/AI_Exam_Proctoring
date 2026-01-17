@@ -204,16 +204,29 @@ If `pip install pyaudio` fails:
 I've added all the requested features to your AI Exam Proctoring project:
 
 🎯 1. Screen Recording - Periodic Screenshots
-Automatic screenshots every 30 seconds during exams
+Automatic screenshots every 60 seconds during exams
 Evidence collection stored in screenshots/ directory
 Toggle controls with real-time status indicator
 API endpoints for start/stop/status control
 
 👤 2. Face Recognition - Verify Authorized Users
-Real-time identity verification using LBPH algorithm
-Unauthorized person detection with critical alerts
-User registration system for authorized faces
-Confidence scoring and face matching
+Quick verification function that runs before exam starts
+Multiple attempts (up to 3) for reliable verification
+Comprehensive status checking:
+✅ Verified: Authorized user detected
+❌ No registered faces: Need to register users first
+❌ No face detected: User not positioned correctly
+❌ Multiple faces: More than one person in frame
+❌ Unauthorized: Unknown person detected
+❌ Low confidence: Poor lighting or angle
+🎯 Enhanced Start Exam Flow
+Click "Start Exam" → Face verification begins
+Camera scans face → Matches against registered users
+Verification result:
+✅ Success: Exam starts automatically
+❌ Failed: Shows specific error message
+Exam only starts after successful verification
+
 🚨 3. Enhanced Alert System - Severity Levels
 Color-coded alerts: Red (Critical), Orange (Warning), Blue (Info)
 Automatic escalation after 3 violations of same type

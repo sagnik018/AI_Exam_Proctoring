@@ -2,6 +2,83 @@
 // ENHANCED FEATURES JAVASCRIPT
 // =====================
 
+// Face Verification Before Exam
+function verifyFaceBeforeExam() {
+    return new Promise((resolve, reject) => {
+        showNotification("Verifying face identity...", "info");
+        
+        fetch("/api/face_recognition/verify_quick", {
+            method: "POST"
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                const verification = data.verification;
+                
+                if (verification.verified) {
+                    showNotification(verification.message, "success");
+                    resolve(true);
+                } else {
+                    showNotification(verification.message, "error");
+                    resolve(false);
+                }
+            } else {
+                showNotification("Face verification failed", "error");
+                resolve(false);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showNotification("Face verification error", "error");
+            resolve(false);
+        });
+    });
+}
+
+// Face Registration
+function registerFace() {
+    const name = prompt("Enter your name for face registration:");
+    if (!name) return;
+    
+    showNotification("Capturing face for registration...", "info");
+    
+    // Capture current frame and register
+    fetch("/api/face_recognition/register", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: name })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+            showNotification(`Face registered successfully! ${name}, you can now start the exam.`, "success");
+            showNotification("✅ Verified permission given to start the test!", "success");
+        } else if (data.status === "info") {
+            showNotification(data.message, "info");
+        } else {
+            showNotification("Face registration failed", "error");
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showNotification("Face registration error", "error");
+    });
+}
+
+// Enhanced Start Exam with Face Verification
+async function startExamWithVerification() {
+    const verified = await verifyFaceBeforeExam();
+    
+    if (verified) {
+        // Call original startExam function
+        startExam();
+    } else {
+        showNotification("Face verification failed. Exam not started.", "error");
+    }
+}
+
 // Screen Recording Functions
 function toggleScreenRecording() {
     fetch("/api/screen_recording/toggle", {
