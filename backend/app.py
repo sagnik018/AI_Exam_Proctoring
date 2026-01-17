@@ -12,7 +12,7 @@ from proctoring.face_detection import detect_faces
 from proctoring.eye_head_detection import detect_head_movement
 from proctoring.audio_detection import detect_background_voice
 from proctoring.screen_monitor import detect_tab_switch
-from proctoring.alert_engine import generate_alert, get_last_alert
+from proctoring.alert_engine import generate_alert, get_last_alert, clear_alert_queue
 from proctoring.screen_recording import start_screen_recording, stop_screen_recording, get_screenshot_count
 from proctoring.face_recognition import initialize_face_recognition, register_new_user, verify_user_identity, quick_face_verification
 from proctoring.alert_system import initialize_alert_system, create_severity_alert, get_alert_statistics, check_escalation_status
@@ -64,12 +64,43 @@ _last_event_time = {
 
 
 # =====================
-# HOME PAGE
+# HOME PAGE - REDIRECT TO DETAILS
 # =====================
 @app.route("/")
 def home():
+    return render_template("details.html")
+
+# =====================
+# MAIN EXAM PAGE (AFTER VERIFICATION)
+# =====================
+@app.route("/exam")
+def exam():
     return render_template("index.html")
 
+# =====================
+# USER DETAILS
+# =====================
+@app.route("/details")
+def user_details():
+    return render_template("details.html")
+
+@app.route("/submit_details", methods=["POST"])
+def submit_details():
+    # Handle both form data and JSON data
+    if request.is_json:
+        data = request.get_json()
+        name = data.get("name")
+        gender = data.get("gender")
+        location = data.get("location")
+    else:
+        name = request.form.get("name")
+        gender = request.form.get("gender")
+        location = request.form.get("location")
+    
+    # Store user details (you can save to database if needed)
+    log_event(f"User details submitted: {name}, {gender}, {location}")
+    
+    return jsonify({"status": "success", "message": "Details submitted successfully"})
 
 # =====================
 # ADMIN LOGS
@@ -380,8 +411,8 @@ def _detection_worker():
     global _detected_face_count, _detected_head_suspicious
 
     event_cooldown_seconds = {
-        "multiple_faces": 3.0,
-        "head_movement": 2.0,
+        "multiple_faces": 8.0,  # Increased from 3.0
+        "head_movement": 5.0,    # Increased from 2.0
     }
 
     frame_index = 0
@@ -477,7 +508,7 @@ def _audio_worker():
     global suspicion_score, last_alert
     global _audio_suspicious, _audio_last_check_time
 
-    event_cooldown_seconds = 6.0
+    event_cooldown_seconds = 10.0  # Increased from 6.0
 
     audio_check_interval_seconds = 6.0
 
@@ -624,19 +655,25 @@ def video_feed():
 # =====================
 # START / STOP EXAM
 # =====================
-@app.route("/start_exam")
+@app.route("/start_exam", methods=["POST"])
 def start_exam():
     global exam_running, suspicion_score, last_alert
     exam_running = True
     suspicion_score = 0
     last_alert = ""
-    return jsonify({"status": "started"})
+    
+    # Clear any existing alerts when starting exam
+    clear_alert_queue()
+    
+    log_event("Exam started")
+    return jsonify({"status": "success", "message": "Exam started"})
 
 
 @app.route("/stop_exam")
 def stop_exam():
     global exam_running
     exam_running = False
+    clear_alert_queue()
     return jsonify({"status": "stopped"})
 
 

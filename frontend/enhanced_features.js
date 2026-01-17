@@ -2,89 +2,6 @@
 // ENHANCED FEATURES JAVASCRIPT
 // =====================
 
-// Face Verification Before Exam
-function verifyFaceBeforeExam() {
-    return new Promise((resolve, reject) => {
-        showNotification("Verifying face identity...", "info");
-        
-        fetch("/api/face_recognition/verify_quick", {
-            method: "POST"
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === "success") {
-                const verification = data.verification;
-                
-                if (verification.verified) {
-                    showNotification(verification.message, "success");
-                    resolve(true);
-                } else {
-                    // Show detailed error with lighting advice
-                    let errorMessage = verification.message;
-                    if (verification.lighting_advice) {
-                        errorMessage += `\n\n💡 Lighting Advice: ${verification.lighting_advice}`;
-                    }
-                    
-                    showNotification(errorMessage, "error");
-                    resolve(false);
-                }
-            } else {
-                showNotification("Face verification failed", "error");
-                resolve(false);
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            showNotification("Face verification error", "error");
-            resolve(false);
-        });
-    });
-}
-
-// Face Registration
-function registerFace() {
-    const name = prompt("Enter your name for face registration:");
-    if (!name) return;
-    
-    showNotification("Capturing face for registration...", "info");
-    
-    // Capture current frame and register
-    fetch("/api/face_recognition/register", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name: name })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === "success") {
-            showNotification(`Face registered successfully! ${name}, you can now start the exam.`, "success");
-            showNotification("✅ Verified permission given to start the test!", "success");
-        } else if (data.status === "info") {
-            showNotification(data.message, "info");
-        } else {
-            showNotification("Face registration failed", "error");
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        showNotification("Face registration error", "error");
-    });
-}
-
-// Enhanced Start Exam with Face Verification
-async function startExamWithVerification() {
-    const verified = await verifyFaceBeforeExam();
-    
-    if (verified) {
-        // Call original startExam function
-        startExam();
-    } else {
-        showNotification("Face verification failed. Exam not started.", "error");
-    }
-}
-
 // Screen Recording Functions
 function toggleScreenRecording() {
     fetch("/api/screen_recording/toggle", {
@@ -138,7 +55,7 @@ function showExamRules() {
     modal.innerHTML = `
         <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-screen overflow-y-auto">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-3xl font-bold text-gray-800">📋 Exam Rules to Follow</h2>
+                <h2 class="text-3xl font-bold text-white">📋 Exam Rules to Follow</h2>
                 <button onclick="closeRulesModal()" class="text-gray-500 hover:text-gray-700">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -147,75 +64,27 @@ function showExamRules() {
             </div>
             
             <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-                <h3 class="font-bold text-red-800 mb-2">⚠️ IMPORTANT: Read All Rules Carefully</h3>
-                <p class="text-red-700">Violations will be detected and reported immediately. Follow all rules to ensure fair examination.</p>
+                <h3 class="font-bold text-red-800 mb-2">⚠️ IMPORTANT: Complete All Verification Steps</h3>
+                <p class="text-red-700">You must complete all verification steps before starting the exam. Follow all rules to ensure fair examination.</p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div class="space-y-4">
-                    <div class="bg-blue-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-blue-800 mb-2">👤 Personal Conduct</h4>
-                        <ul class="space-y-2 text-blue-700">
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>No other persons should be in the room during exam</span>
-                            </li>
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>No talking during the examination</span>
-                            </li>
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>Maintain eye contact with screen</span>
-                            </li>
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>No looking away from screen frequently</span>
-                            </li>
-                        </ul>
-                    </div>
-                    
-                    <div class="bg-yellow-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-yellow-800 mb-2">💻 Computer Usage</h4>
-                        <ul class="space-y-2 text-yellow-700">
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>No switching tabs or applications</span>
-                            </li>
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>Close all unnecessary programs</span>
-                            </li>
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>Disable notifications on device</span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <div class="space-y-4">
-                    <div class="bg-purple-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-purple-800 mb-2">📱 Devices & Materials</h4>
-                        <ul class="space-y-2 text-purple-700">
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>No mobile phone usage during exam</span>
-                            </li>
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>No unauthorized materials nearby</span>
-                            </li>
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>No books, notes, or references</span>
-                            </li>
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>Keep workspace clear and visible</span>
-                            </li>
-                        </ul>
-                    </div>
+            <!-- Verification Requirements -->
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                <h3 class="font-bold text-blue-800 mb-3">� Required Verifications</h3>
+                <ul class="space-y-2 text-blue-700">
+                    <li class="flex items-start">
+                        <span class="text-blue-500 mr-2">✓</span>
+                        <span><strong>Personal Details:</strong> Provide your full name, gender, and location</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-blue-500 mr-2">✓</span>
+                        <span><strong>Face Verification:</strong> Verify your identity using facial recognition</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-blue-500 mr-2">✓</span>
+                        <span><strong>Exam Rules:</strong> Read and accept all examination rules</span>
+                    </li>
+                </ul>
                     
                     <div class="bg-green-50 p-4 rounded-lg">
                         <h4 class="font-semibold text-green-800 mb-2">🎯 Examination Protocol</h4>
@@ -255,7 +124,7 @@ function showExamRules() {
             <div class="flex justify-between items-center">
                 <div class="flex items-center space-x-2">
                     <input type="checkbox" id="rulesAccepted" class="w-4 h-4 text-blue-600">
-                    <label for="rulesAccepted" class="text-gray-700 font-medium">
+                    <label for="rulesAccepted" class="text-white font-medium">
                         I have read and understood all exam rules
                     </label>
                 </div>
@@ -499,11 +368,18 @@ function changeTheme() {
     .then(res => res.json())
     .then(data => {
         if (data.status === "success") {
-            updateThemeCSS(data.current_theme);
+            // Force CSS refresh by adding timestamp
+            const themeLink = document.getElementById("theme-css");
+            if (themeLink) {
+                themeLink.href = `/themes.css?t=${Date.now()}`;
+            }
             showNotification(`Theme changed to ${selectedTheme}`, "success");
         }
     })
-    .catch(err => console.error(err));
+    .catch(err => {
+        console.error(err);
+        showNotification("Failed to change theme", "error");
+    });
 }
 
 function updateThemeCSS(themeName) {
