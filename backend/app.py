@@ -97,8 +97,36 @@ def submit_details():
         gender = request.form.get("gender")
         location = request.form.get("location")
     
-    # Store user details (you can save to database if needed)
-    log_event(f"User details submitted: {name}, {gender}, {location}")
+    # Store user details in database
+    try:
+        conn = sqlite3.connect('proctoring.db')
+        cursor = conn.cursor()
+        
+        # Create table if not exists
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_details (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                gender TEXT NOT NULL,
+                location TEXT NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Insert user details
+        cursor.execute('''
+            INSERT INTO user_details (name, gender, location)
+            VALUES (?, ?, ?)
+        ''', (name, gender, location))
+        
+        conn.commit()
+        conn.close()
+        
+        log_event(f"User details stored in database: {name}, {gender}, {location}")
+        
+    except Exception as e:
+        log_event(f"Database error storing user details: {str(e)}")
+        return jsonify({"status": "error", "message": "Failed to store details"})
     
     return jsonify({"status": "success", "message": "Details submitted successfully"})
 
