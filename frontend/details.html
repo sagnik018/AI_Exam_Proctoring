@@ -33,13 +33,18 @@
             transition: border-color 0.3s ease;
         }
         
-        /* Fix input field colors - Stronger overrides */
+        /* Fix input field colors - Stronger overrides with cursor fix */
         input[type="text"],
         input[type="text"]:focus,
         input[type="text"]:hover {
             color: var(--text-color, #2C3E50) !important;
             background: var(--surface-color, #FFFFFF) !important;
             border-color: var(--border-color, #000000) !important;
+            cursor: text !important;
+            caret-color: var(--text-color, #2C3E50) !important;
+            outline: none !important;
+            box-shadow: none !important;
+            transition: all 0.1s ease !important;
         }
         
         /* Fix radio button text */
@@ -76,6 +81,19 @@
             border-color: var(--border-color, #000000) !important;
         }
         
+        /* Remove input animations and transitions */
+        input {
+            animation: none !important;
+            transition: none !important;
+            transform: none !important;
+        }
+        
+        input:focus {
+            animation: none !important;
+            transition: none !important;
+            transform: none !important;
+        }
+        
         .step-indicator {
             transition: all 0.3s ease;
         }
@@ -96,7 +114,7 @@
         }
     </style>
 </head>
-<body class="font-sans antialiased">
+cu<body class="font-sans antialiased">
     <div class="container mx-auto px-4 py-8">
         <!-- Header -->
         <header class="text-center mb-8">
@@ -140,8 +158,8 @@
                             id="name" 
                             name="name" 
                             required
-                            class="w-full px-4 py-3 rounded-lg theme-bg theme-border border-2 focus:outline-none focus:ring-2 focus:ring-blue-500 theme-text"
-                            style="color: var(--text-color, #2C3E50) !important; background: var(--surface-color, #FFFFFF) !important; border-color: var(--border-color, #000000) !important;"
+                            class="w-full px-4 py-3 rounded-lg theme-bg theme-border border-2"
+                            style="color: var(--text-color, #2C3E50) !important; background: var(--surface-color, #FFFFFF) !important; border-color: var(--border-color, #000000) !important; cursor: text !important; caret-color: var(--text-color, #2C3E50) !important; outline: none !important; animation: none !important; transition: none !important;"
                             placeholder="Enter your full name"
                         >
                     </div>
@@ -150,21 +168,21 @@
                     <div class="mb-6">
                         <label class="block theme-text font-semibold mb-2" style="color: var(--text-color, #2C3E50) !important;">Gender</label>
                         <div class="grid grid-cols-2 gap-4">
-                            <label class="flex items-center p-3 rounded-lg theme-bg theme-border border-2 cursor-pointer hover:bg-opacity-80 transition" style="background: var(--surface-color, #FFFFFF) !important; border-color: var(--border-color, #000000) !important;">
+                            <label class="flex items-center p-3 rounded-lg theme-bg theme-border border-2 cursor-pointer" style="background: var(--surface-color, #FFFFFF) !important; border-color: var(--border-color, #000000) !important; color: var(--text-color, #2C3E50) !important;">
                                 <input type="radio" name="gender" value="male" required class="mr-3">
                                 <span class="theme-text" style="color: var(--text-color, #2C3E50) !important;">Male</span>
                             </label>
-                            <label class="flex items-center p-3 rounded-lg theme-bg theme-border border-2 cursor-pointer hover:bg-opacity-80 transition" style="background: var(--surface-color, #FFFFFF) !important; border-color: var(--border-color, #000000) !important;">
+                            <label class="flex items-center p-3 rounded-lg theme-bg theme-border border-2 cursor-pointer" style="background: var(--surface-color, #FFFFFF) !important; border-color: var(--border-color, #000000) !important; color: var(--text-color, #2C3E50) !important;">
                                 <input type="radio" name="gender" value="female" required class="mr-3">
                                 <span class="theme-text" style="color: var(--text-color, #2C3E50) !important;">Female</span>
                             </label>
                         </div>
                         <div class="grid grid-cols-2 gap-4 mt-3">
-                            <label class="flex items-center p-3 rounded-lg theme-bg theme-border border-2 cursor-pointer hover:bg-opacity-80 transition" style="background: var(--surface-color, #FFFFFF) !important; border-color: var(--border-color, #000000) !important;">
+                            <label class="flex items-center p-3 rounded-lg theme-bg theme-border border-2 cursor-pointer" style="background: var(--surface-color, #FFFFFF) !important; border-color: var(--border-color, #000000) !important; color: var(--text-color, #2C3E50) !important;">
                                 <input type="radio" name="gender" value="other" required class="mr-3">
                                 <span class="theme-text" style="color: var(--text-color, #2C3E50) !important;">Other</span>
                             </label>
-                            <label class="flex items-center p-3 rounded-lg theme-bg theme-border border-2 cursor-pointer hover:bg-opacity-80 transition" style="background: var(--surface-color, #FFFFFF) !important; border-color: var(--border-color, #000000) !important;">
+                            <label class="flex items-center p-3 rounded-lg theme-bg theme-border border-2 cursor-pointer" style="background: var(--surface-color, #FFFFFF) !important; border-color: var(--border-color, #000000) !important; color: var(--text-color, #2C3E50) !important;">
                                 <input type="radio" name="gender" value="prefer_not_to_say" required class="mr-3">
                                 <span class="theme-text" style="color: var(--text-color, #2C3E50) !important;">Prefer not to say</span>
                             </label>
@@ -179,8 +197,8 @@
                             id="location" 
                             name="location" 
                             required
-                            class="w-full px-4 py-3 rounded-lg theme-bg theme-border border-2 focus:outline-none focus:ring-2 focus:ring-blue-500 theme-text"
-                            style="color: var(--text-color, #2C3E50) !important; background: var(--surface-color, #FFFFFF) !important; border-color: var(--border-color, #000000) !important;"
+                            class="w-full px-4 py-3 rounded-lg theme-bg theme-border border-2"
+                            style="color: var(--text-color, #2C3E50) !important; background: var(--surface-color, #FFFFFF) !important; border-color: var(--border-color, #000000) !important; cursor: text !important; caret-color: var(--text-color, #2C3E50) !important; outline: none !important; animation: none !important; transition: none !important;"
                             placeholder="Enter your location (city, country)"
                         >
                     </div>
@@ -192,6 +210,13 @@
                             class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg"
                         >
                             Next - Face Verification →
+                        </button>
+                        <button 
+                            type="button"
+                            onclick="testForm()"
+                            class="mt-2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
+                        >
+                            Test Form
                         </button>
                     </div>
                 </form>
@@ -312,16 +337,46 @@
             });
         }
 
+        // Test form function
+        function testForm() {
+            const name = document.getElementById('name').value;
+            const gender = document.querySelector('input[name="gender"]:checked');
+            const location = document.getElementById('location').value;
+            
+            console.log('Test Form Data:');
+            console.log('Name:', name);
+            console.log('Gender:', gender ? gender.value : 'Not selected');
+            console.log('Location:', location);
+            
+            alert(`Form Test:\nName: ${name || 'Empty'}\nGender: ${gender ? gender.value : 'Not selected'}\nLocation: ${location || 'Empty'}`);
+        }
+
         // Handle details form submission
         document.getElementById('detailsForm').addEventListener('submit', function(event) {
             event.preventDefault();
             
+            console.log('Form submitted'); // Debug log
+            
             const formData = new FormData(event.target);
+            const name = formData.get('name');
+            const gender = formData.get('gender');
+            const location = formData.get('location');
+            
+            console.log('Form data:', { name, gender, location }); // Debug log
+            
+            // Validate form data
+            if (!name || !gender || !location) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
             userDetails = {
-                name: formData.get('name'),
-                gender: formData.get('gender'),
-                location: formData.get('location')
+                name: name,
+                gender: gender,
+                location: location
             };
+            
+            console.log('User details saved:', userDetails); // Debug log
             
             // Move to face verification step
             moveToStep2();
