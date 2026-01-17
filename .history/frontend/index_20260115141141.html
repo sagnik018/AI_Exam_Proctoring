@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Online Exam</title>
+</head>
+<body>
+  <h2>AI Proctored Exam</h2>
+  <button onclick="startExam()">Start Exam</button>
+
+  <script>
+    function startExam() {
+      fetch("http://127.0.0.1:5000/start_exam");
+      alert("Exam Started with AI Proctoring");
+    }
+  </script>
+</body>
+</html>

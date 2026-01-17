@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Exam Proctoring</title>
+</head>
+<body>
+
+<h2>AI-Based Online Exam Proctoring System</h2>
+
+<button onclick="startExam()">Start Exam</button>
+<button onclick="stopExam()">Stop Exam</button>
+
+<p>Suspicion Score: <span id="score">0</span></p>
+<p id="alertBox" style="color:red;"></p>
+
+
+<!-- LIVE VIDEO WINDOW -->
+<img
+    src="http://127.0.0.1:5000/video_feed"
+    width="640"
+    height="480"
+    style="border:2px solid black;"
+>
+
+<script src="exam.js"></script>
+</body>
+</html>
