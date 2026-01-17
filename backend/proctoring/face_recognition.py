@@ -147,6 +147,10 @@ def register_new_user(face_image, name):
     """Register a new authorized user"""
     return face_recognition.register_face(face_image, name)
 
+def quick_face_verification(frame, max_attempts=3):
+    """Quick face verification before exam starts"""
+    return face_recognition.quick_face_verification(frame, max_attempts)
+
 def verify_user_identity(frame):
     """Verify if user in frame is authorized"""
     return face_recognition.verify_authorized_user(frame)

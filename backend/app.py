@@ -117,6 +117,22 @@ def screen_recording_status():
 # =====================
 # FACE RECOGNITION ENDPOINTS
 # =====================
+@app.route("/api/face_recognition/verify_quick", methods=["POST"])
+def verify_face_quick_api():
+    global _latest_frame
+    if _latest_frame is None:
+        return jsonify({"status": "error", "message": "No camera feed available"})
+    
+    verification_result = quick_face_verification(_latest_frame)
+    
+    if verification_result['verified']:
+        log_event(f"Face verified: {verification_result.get('name', 'Unknown')}")
+    
+    return jsonify({
+        "status": "success",
+        "verification": verification_result
+    })
+
 @app.route("/api/face_recognition/register", methods=["POST"])
 def register_face_api():
     try:
