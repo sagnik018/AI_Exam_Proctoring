@@ -73,6 +73,87 @@ class FaceRecognitionSystem:
             print(f"[FACE_RECOGNITION ERROR] {e}")
             return False
     
+    def quick_verification(self, frame, max_attempts=3):
+        """Quick face verification before exam starts"""
+        if len(self.known_face_encodings) == 0:
+            return {
+                'status': 'no_registered_faces',
+                'message': 'No registered faces found. Please register a user first.',
+                'verified': False
+            }
+        
+        for attempt in range(max_attempts):
+            try:
+                # Convert to grayscale
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                
+                # Detect faces
+                faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(50, 50))
+                
+                if len(faces) == 0:
+                    if attempt == max_attempts - 1:
+                        return {
+                            'status': 'no_face_detected',
+                            'message': 'No face detected. Please position yourself in front of camera.',
+                            'verified': False
+                        }
+                    continue
+                
+                if len(faces) > 1:
+                    return {
+                        'status': 'multiple_faces',
+                        'message': 'Multiple faces detected. Only one person should be in frame.',
+                        'verified': False
+                    }
+                
+                # Get single face
+                x, y, w, h = faces[0]
+                face_roi = gray[y:y+h, x:x+w]
+                
+                # Try to recognize the face
+                if len(self.known_face_encodings) > 0:
+                    label, confidence = self.recognizer.predict(face_roi)
+                    
+                    if confidence < 100:  # Good confidence threshold
+                        name = self.known_face_names[label] if label < len(self.known_face_names) else "Unknown"
+                        
+                        if name != "Unknown":
+                            return {
+                                'status': 'verified',
+                                'message': f'Face verified: {name} (Confidence: {100-confidence:.1f}%)',
+                                'verified': True,
+                                'name': name,
+                                'confidence': 100 - confidence
+                            }
+                        else:
+                            return {
+                                'status': 'unauthorized',
+                                'message': 'Unauthorized face detected. Access denied.',
+                                'verified': False
+                            }
+                    else:
+                        if attempt == max_attempts - 1:
+                            return {
+                                'status': 'low_confidence',
+                                'message': 'Face recognition failed. Please try again with better lighting.',
+                                'verified': False
+                            }
+            
+            except Exception as e:
+                print(f"[FACE_RECOGNITION ERROR] {e}")
+                if attempt == max_attempts - 1:
+                    return {
+                        'status': 'error',
+                        'message': f'Face verification error: {str(e)}',
+                        'verified': False
+                    }
+        
+        return {
+            'status': 'failed',
+            'message': 'Face verification failed after multiple attempts.',
+            'verified': False
+        }
+
     def recognize_face(self, frame):
         """Recognize faces in frame and verify if authorized"""
         try:
@@ -149,7 +230,7 @@ def register_new_user(face_image, name):
 
 def quick_face_verification(frame, max_attempts=3):
     """Quick face verification before exam starts"""
-    return face_recognition.quick_face_verification(frame, max_attempts)
+    return face_recognition.quick_verification(frame, max_attempts)
 
 def verify_user_identity(frame):
     """Verify if user in frame is authorized"""

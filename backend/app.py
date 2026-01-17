@@ -1,11 +1,9 @@
-from flask import Flask, render_template, Response, jsonify
+from flask import Flask, render_template, request, jsonify, Response
 import cv2
 import time
 import os
 import threading
 import sqlite3
-from flask import Flask, render_template, request, jsonify, Response
-import cv2
 import numpy as np
 from werkzeug.utils import secure_filename
 
@@ -16,7 +14,7 @@ from proctoring.audio_detection import detect_background_voice
 from proctoring.screen_monitor import detect_tab_switch
 from proctoring.alert_engine import generate_alert, get_last_alert
 from proctoring.screen_recording import start_screen_recording, stop_screen_recording, get_screenshot_count
-from proctoring.face_recognition import initialize_face_recognition, register_new_user, verify_user_identity
+from proctoring.face_recognition import initialize_face_recognition, register_new_user, verify_user_identity, quick_face_verification
 from proctoring.alert_system import initialize_alert_system, create_severity_alert, get_alert_statistics, check_escalation_status
 from proctoring.calibration import start_calibration_wizard, run_calibration_test, get_calibration_status, apply_optimal_settings
 from proctoring.theme_manager import initialize_theme_manager, set_theme, get_current_theme, get_theme_css, get_available_themes
@@ -135,16 +133,44 @@ def verify_face_quick_api():
 
 @app.route("/api/face_recognition/register", methods=["POST"])
 def register_face_api():
+    global _latest_frame
     try:
-        # This would normally get image from request
-        # For now, return instructions
-        return jsonify({
-            "status": "info",
-            "message": "Face registration requires image upload endpoint",
-            "instructions": "Use face registration with proper image capture"
-        })
+        data = request.get_json()
+        name = data.get('name', '').strip()
+        
+        if not name:
+            return jsonify({
+                "status": "error", 
+                "message": "Name is required for registration"
+            })
+        
+        if _latest_frame is None:
+            return jsonify({
+                "status": "error", 
+                "message": "No camera feed available for registration"
+            })
+        
+        # Register the face from current frame
+        success = register_new_user(_latest_frame, name)
+        
+        if success:
+            log_event(f"Face registered: {name}")
+            return jsonify({
+                "status": "success",
+                "message": f"Face registered successfully for {name}",
+                "name": name
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Face registration failed. Please ensure your face is clearly visible."
+            })
+            
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
+        return jsonify({
+            "status": "error", 
+            "message": f"Registration error: {str(e)}"
+        })
 
 @app.route("/api/face_recognition/verify")
 def verify_face_api():
