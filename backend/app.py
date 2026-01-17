@@ -222,13 +222,55 @@ def start_calibration_api():
         log_event("Calibration wizard started")
     return jsonify({"status": "success", "calibration": result})
 
-@app.route("/api/calibration/test/<step>", methods=["POST"])
-def run_calibration_test_api(step):
+@app.route("/api/calibration/test", methods=["POST"])
+def run_calibration_test_api():
     global _latest_frame
-    frame = _latest_frame if _latest_frame is not None else None
-    
-    result = run_calibration_test(step, frame)
-    return jsonify({"status": "success", "step": step, "result": result})
+    try:
+        current_status = get_calibration_status()
+        
+        if not current_status['is_running']:
+            return jsonify({
+                "status": "error",
+                "message": "Calibration wizard not started"
+            })
+        
+        current_step = current_status['current_step']
+        test_type = current_status['test_type']
+        
+        if test_type is None:
+            # For steps without tests (welcome, final_check)
+            return jsonify({
+                "status": "success",
+                "message": "Step completed",
+                "test_results": {"status": "completed", "message": "Setup step completed"}
+            })
+        
+        # Run appropriate test
+        if test_type == 'camera':
+            results = run_calibration_test(_latest_frame, 'camera_position')
+        elif test_type == 'face_verification':
+            results = run_calibration_test(_latest_frame, 'face_verification')
+        elif test_type == 'lighting':
+            results = run_calibration_test(_latest_frame, 'lighting')
+        elif test_type == 'face_detection':
+            results = run_calibration_test(_latest_frame, 'face_detection')
+        elif test_type == 'audio':
+            results = run_calibration_test(None, 'audio')
+        elif test_type == 'rules_confirmation':
+            results = run_calibration_test(None, 'rules_confirmation')
+        else:
+            results = {"status": "error", "message": f"Unknown test type: {test_type}"}
+        
+        return jsonify({
+            "status": "success",
+            "test_results": results
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Calibration test failed: {str(e)}"
+        })
 
 @app.route("/api/calibration/next", methods=["POST"])
 def calibration_next_step_api():

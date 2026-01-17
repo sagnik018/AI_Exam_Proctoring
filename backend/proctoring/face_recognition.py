@@ -48,12 +48,20 @@ class FaceRecognitionSystem:
             faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(50, 50))
             
             if len(faces) > 0:
-                # Train recognizer with the face
-                x, y, w, h = faces[0]
+                # Get the largest face
+                face = max(faces, key=lambda f: f[2] * f[3])
+                x, y, w, h = face
                 face_roi = gray[y:y+h, x:x+w]
                 
-                # Train the recognizer
-                self.recognizer.train([face_roi], np.array([1]))
+                # Train the recognizer with the face
+                if len(self.known_face_encodings) == 0:
+                    # First face - train with label 0
+                    self.recognizer.train([face_roi], np.array([0]))
+                else:
+                    # Additional faces - train with all faces
+                    all_faces = self.known_face_encodings + [face_roi]
+                    all_labels = list(range(len(all_faces)))
+                    self.recognizer.train(all_faces, np.array(all_labels))
                 
                 # Save the trained model
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -61,7 +69,7 @@ class FaceRecognitionSystem:
                 filepath = os.path.join(self.known_faces_dir, filename)
                 
                 with open(filepath, 'wb') as f:
-                    pickle.dump({'name': name, 'encoding': face_roi}, f)
+                    pickle.dump({'name': name, 'encoding': face_roi, 'label': len(self.known_face_names)}, f)
                 
                 # Reload known faces
                 self._load_known_faces()
@@ -87,6 +95,33 @@ class FaceRecognitionSystem:
                 # Convert to grayscale
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 
+                # Check lighting conditions first
+                brightness = np.mean(gray)
+                contrast = np.std(gray)
+                
+                # Lighting warnings
+                if brightness < 50:
+                    return {
+                        'status': 'poor_lighting',
+                        'message': 'Face not visible due to poor lighting. Please move to a room with optimal lighting.',
+                        'verified': False,
+                        'lighting_advice': 'Move to a well-lit room or turn on more lights'
+                    }
+                elif brightness > 200:
+                    return {
+                        'status': 'overexposed',
+                        'message': 'Face is overexposed due to bright lighting. Please adjust lighting.',
+                        'verified': False,
+                        'lighting_advice': 'Reduce bright lighting or adjust camera exposure'
+                    }
+                elif contrast < 30:
+                    return {
+                        'status': 'low_contrast',
+                        'message': 'Poor contrast affecting face detection. Improve lighting conditions.',
+                        'verified': False,
+                        'lighting_advice': 'Ensure even lighting on your face without shadows'
+                    }
+                
                 # Detect faces
                 faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(50, 50))
                 
@@ -94,8 +129,9 @@ class FaceRecognitionSystem:
                     if attempt == max_attempts - 1:
                         return {
                             'status': 'no_face_detected',
-                            'message': 'No face detected. Please position yourself in front of camera.',
-                            'verified': False
+                            'message': 'No face detected. Please position yourself in front of camera with proper lighting.',
+                            'verified': False,
+                            'lighting_advice': 'Ensure your face is well-lit and clearly visible'
                         }
                     continue
                 
@@ -110,9 +146,30 @@ class FaceRecognitionSystem:
                 x, y, w, h = faces[0]
                 face_roi = gray[y:y+h, x:x+w]
                 
+                # Check if face is properly sized
+                face_area = w * h
+                frame_area = frame.shape[0] * frame.shape[1]
+                face_ratio = face_area / frame_area
+                
+                if face_ratio < 0.05:  # Face too small
+                    return {
+                        'status': 'face_too_small',
+                        'message': 'Face too small or too far from camera. Move closer.',
+                        'verified': False,
+                        'lighting_advice': 'Move closer to camera for better face visibility'
+                    }
+                
                 # Try to recognize the face
                 if len(self.known_face_encodings) > 0:
-                    label, confidence = self.recognizer.predict(face_roi)
+                    # Ensure recognizer is trained
+                    try:
+                        label, confidence = self.recognizer.predict(face_roi)
+                    except cv2.error:
+                        return {
+                            'status': 'model_not_trained',
+                            'message': 'Face recognition model not trained. Please register a face first.',
+                            'verified': False
+                        }
                     
                     if confidence < 100:  # Good confidence threshold
                         name = self.known_face_names[label] if label < len(self.known_face_names) else "Unknown"
@@ -135,8 +192,9 @@ class FaceRecognitionSystem:
                         if attempt == max_attempts - 1:
                             return {
                                 'status': 'low_confidence',
-                                'message': 'Face recognition failed. Please try again with better lighting.',
-                                'verified': False
+                                'message': 'Face recognition failed. Please ensure proper lighting and positioning.',
+                                'verified': False,
+                                'lighting_advice': 'Move to optimal lighting conditions and try again'
                             }
             
             except Exception as e:

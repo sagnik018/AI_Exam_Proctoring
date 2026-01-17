@@ -7,17 +7,121 @@ from datetime import datetime
 
 class CalibrationWizard:
     def __init__(self):
-        self.calibration_data = {}
-        self.calibration_file = "calibration_settings.json"
-        self.steps = [
-            'camera_position',
-            'lighting_check', 
-            'face_detection_test',
-            'audio_test',
-            'final_settings'
-        ]
         self.current_step = 0
+        self.calibration_data = {}
         self.test_results = {}
+        self.is_running = False
+        
+        # Define calibration steps including exam preparation
+        self.calibration_steps = [
+            {
+                'id': 'welcome',
+                'title': 'Welcome to Exam Setup',
+                'description': 'This wizard will help you set up your environment for secure exam proctoring.',
+                'instructions': [
+                    'Ensure you are in a quiet, well-lit room',
+                    'Position your camera at eye level',
+                    'Have your government ID ready for verification',
+                    'Close all unnecessary applications',
+                    'Disable notifications on your device'
+                ],
+                'test_type': None
+            },
+            {
+                'id': 'camera_position',
+                'title': 'Camera Position Check',
+                'description': 'Position your camera to capture your face clearly.',
+                'instructions': [
+                    'Center your face in the frame',
+                    'Ensure good lighting on your face',
+                    'Position camera at eye level',
+                    'Keep 1-2 feet distance from camera',
+                    'Avoid backlighting'
+                ],
+                'test_type': 'camera'
+            },
+            {
+                'id': 'face_verification',
+                'title': 'Face Identity Verification',
+                'description': 'Verify your identity before starting the exam.',
+                'instructions': [
+                    'Look directly at the camera',
+                    'Remove glasses if possible for better recognition',
+                    'Keep neutral expression',
+                    'Wait for face detection and verification',
+                    'Only registered users can proceed'
+                ],
+                'test_type': 'face_verification'
+            },
+            {
+                'id': 'lighting_check',
+                'title': 'Lighting Assessment',
+                'description': 'Check if lighting conditions are optimal for face detection.',
+                'instructions': [
+                    'Ensure even lighting on your face',
+                    'Avoid strong shadows',
+                    'Natural light is preferred',
+                    'Avoid backlight from windows',
+                    'Adjust room lighting if needed'
+                ],
+                'test_type': 'lighting'
+            },
+            {
+                'id': 'face_detection',
+                'title': 'Face Detection Test',
+                'description': 'Test if the system can detect your face reliably.',
+                'instructions': [
+                    'Keep your face visible in the camera',
+                    'Move slightly to test detection',
+                    'Ensure no obstructions',
+                    'Test different angles briefly',
+                    'Return to centered position'
+                ],
+                'test_type': 'face_detection'
+            },
+            {
+                'id': 'audio_check',
+                'title': 'Audio Environment Check',
+                'description': 'Check for background noise that might trigger alerts.',
+                'instructions': [
+                    'Ensure quiet environment',
+                    'Turn off music/TV',
+                    'Close windows to reduce outside noise',
+                    'Inform others in the house',
+                    'Test microphone clarity'
+                ],
+                'test_type': 'audio'
+            },
+            {
+                'id': 'exam_rules',
+                'title': 'Exam Rules Confirmation',
+                'description': 'Review and confirm understanding of exam rules.',
+                'instructions': [
+                    'No other persons should be in the room',
+                    'No talking during the exam',
+                    'No looking away from screen frequently',
+                    'No switching tabs or applications',
+                    'No mobile phone usage during exam',
+                    'Maintain eye contact with screen',
+                    'No unauthorized materials nearby',
+                    'Follow all examiner instructions'
+                ],
+                'test_type': 'rules_confirmation'
+            },
+            {
+                'id': 'final_check',
+                'title': 'Final System Check',
+                'description': 'Complete system verification before starting exam.',
+                'instructions': [
+                    'All systems verified successfully',
+                    'Face identity confirmed',
+                    'Environment is suitable',
+                    'You are ready to start the exam',
+                    'Click "Start Exam" when ready'
+                ],
+                'test_type': None
+            }
+        ]
         
         # Load existing calibration if available
         self._load_calibration()
@@ -25,8 +129,8 @@ class CalibrationWizard:
     def _load_calibration(self):
         """Load existing calibration settings"""
         try:
-            if os.path.exists(self.calibration_file):
-                with open(self.calibration_file, 'r') as f:
+            if os.path.exists("calibration_settings.json"):
+                with open("calibration_settings.json", 'r') as f:
                     self.calibration_data = json.load(f)
                     print(f"[CALIBRATION] Loaded existing settings")
         except Exception as e:
@@ -36,7 +140,7 @@ class CalibrationWizard:
     def _save_calibration(self):
         """Save calibration settings"""
         try:
-            with open(self.calibration_file, 'w') as f:
+            with open("calibration_settings.json", 'w') as f:
                 json.dump(self.calibration_data, f, indent=2)
                 print(f"[CALIBRATION] Settings saved")
         except Exception as e:
@@ -50,20 +154,20 @@ class CalibrationWizard:
         
         return {
             'status': 'started',
-            'current_step': self.steps[self.current_step],
-            'total_steps': len(self.steps),
+            'current_step': self.calibration_steps[self.current_step]['title'],
+            'total_steps': len(self.calibration_steps),
             'progress': 0
         }
     
     def next_step(self):
         """Move to next calibration step"""
-        if self.current_step < len(self.steps) - 1:
+        if self.current_step < len(self.calibration_steps) - 1:
             self.current_step += 1
             return {
                 'status': 'in_progress',
-                'current_step': self.steps[self.current_step],
-                'total_steps': len(self.steps),
-                'progress': (self.current_step + 1) / len(self.steps) * 100
+                'current_step': self.calibration_steps[self.current_step]['title'],
+                'total_steps': len(self.calibration_steps),
+                'progress': (self.current_step + 1) / len(self.calibration_steps) * 100
             }
         else:
             return self.complete_calibration()
@@ -211,6 +315,74 @@ class CalibrationWizard:
         self.test_results['face_detection'] = results
         return results
     
+    def run_face_verification_test(self, frame):
+        """Test face verification for exam authorization"""
+        if frame is None:
+            return {'status': 'error', 'message': 'No camera feed available'}
+        
+        try:
+            # Import face recognition system
+            from .face_recognition import quick_face_verification
+            
+            # Run quick face verification
+            verification_result = quick_face_verification(frame, max_attempts=2)
+            
+            results = {
+                'verification_status': verification_result['status'],
+                'verified': verification_result['verified'],
+                'message': verification_result['message'],
+                'recommendations': []
+            }
+            
+            if verification_result['verified']:
+                results['recommendations'].append("✅ Face verification successful - You can start the exam")
+            else:
+                results['recommendations'].append("❌ Face verification failed - Please register your face first")
+                if verification_result['status'] == 'no_registered_faces':
+                    results['recommendations'].append("Click 'Register Face' button to register your identity")
+                elif verification_result['status'] == 'no_face_detected':
+                    results['recommendations'].append("Position your face clearly in front of camera")
+                elif verification_result['status'] == 'multiple_faces':
+                    results['recommendations'].append("Ensure only one person is in the camera frame")
+                elif verification_result['status'] == 'unauthorized':
+                    results['recommendations'].append("This face is not registered in the system")
+            
+            self.test_results['face_verification'] = results
+            return results
+            
+        except Exception as e:
+            results = {
+                'status': 'error',
+                'message': f'Face verification test failed: {str(e)}',
+                'recommendations': ["Ensure face recognition system is properly initialized"]
+            }
+            self.test_results['face_verification'] = results
+            return results
+    
+    def run_rules_confirmation_test(self):
+        """Test exam rules confirmation"""
+        results = {
+            'rules_confirmed': False,
+            'exam_rules': [
+                'No other persons should be in room',
+                'No talking during the exam',
+                'No looking away from screen frequently',
+                'No switching tabs or applications',
+                'No mobile phone usage during exam',
+                'Maintain eye contact with screen',
+                'No unauthorized materials nearby',
+                'Follow all examiner instructions'
+            ],
+            'recommendations': [
+                'Please read and understand all exam rules',
+                'Violations will be detected and reported',
+                'Ensure you can follow these rules before starting'
+            ]
+        }
+        
+        self.test_results['rules_confirmation'] = results
+        return results
+
     def run_audio_test(self):
         """Test audio input and background noise levels"""
         try:

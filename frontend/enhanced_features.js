@@ -19,7 +19,13 @@ function verifyFaceBeforeExam() {
                     showNotification(verification.message, "success");
                     resolve(true);
                 } else {
-                    showNotification(verification.message, "error");
+                    // Show detailed error with lighting advice
+                    let errorMessage = verification.message;
+                    if (verification.lighting_advice) {
+                        errorMessage += `\n\n💡 Lighting Advice: ${verification.lighting_advice}`;
+                    }
+                    
+                    showNotification(errorMessage, "error");
                     resolve(false);
                 }
             } else {
@@ -123,6 +129,363 @@ function updateCalibrationStatus(calibration) {
         statusEl.innerText = calibration.current_step || "Not Started";
         statusEl.className = "text-gray-300 text-xs";
     }
+}
+
+// Show Exam Rules Modal
+function showExamRules() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-800">📋 Exam Rules to Follow</h2>
+                <button onclick="closeRulesModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+                <h3 class="font-bold text-red-800 mb-2">⚠️ IMPORTANT: Read All Rules Carefully</h3>
+                <p class="text-red-700">Violations will be detected and reported immediately. Follow all rules to ensure fair examination.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="space-y-4">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-blue-800 mb-2">👤 Personal Conduct</h4>
+                        <ul class="space-y-2 text-blue-700">
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>No other persons should be in the room during exam</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>No talking during the examination</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>Maintain eye contact with screen</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>No looking away from screen frequently</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-yellow-800 mb-2">💻 Computer Usage</h4>
+                        <ul class="space-y-2 text-yellow-700">
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>No switching tabs or applications</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>Close all unnecessary programs</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>Disable notifications on device</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-purple-800 mb-2">📱 Devices & Materials</h4>
+                        <ul class="space-y-2 text-purple-700">
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>No mobile phone usage during exam</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>No unauthorized materials nearby</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>No books, notes, or references</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>Keep workspace clear and visible</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-green-800 mb-2">🎯 Examination Protocol</h4>
+                        <ul class="space-y-2 text-green-700">
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>Follow all examiner instructions</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>Stay within camera frame at all times</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>Ensure good lighting and visibility</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-red-500 mr-2">•</span>
+                                <span>Report technical issues immediately</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-100 p-4 rounded-lg mb-6">
+                <h4 class="font-semibold text-gray-800 mb-2">🔍 Monitoring & Detection</h4>
+                <p class="text-gray-700 mb-2">The system will monitor and detect:</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                    <div class="bg-white p-2 rounded text-center">👥 Multiple Faces</div>
+                    <div class="bg-white p-2 rounded text-center">👀 Head Movement</div>
+                    <div class="bg-white p-2 rounded text-center">🗣️ Background Voice</div>
+                    <div class="bg-white p-2 rounded text-center">🔄 Tab Switching</div>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="rulesAccepted" class="w-4 h-4 text-blue-600">
+                    <label for="rulesAccepted" class="text-gray-700 font-medium">
+                        I have read and understood all exam rules
+                    </label>
+                </div>
+                <div class="space-x-2">
+                    <button onclick="closeRulesModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded">
+                        Cancel
+                    </button>
+                    <button onclick="acceptRules()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded" disabled id="acceptRulesBtn">
+                        I Accept - Start Exam
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Enable accept button only when checkbox is checked
+    const checkbox = document.getElementById('rulesAccepted');
+    const acceptBtn = document.getElementById('acceptRulesBtn');
+    
+    checkbox.addEventListener('change', function() {
+        acceptBtn.disabled = !this.checked;
+    });
+}
+
+function acceptRules() {
+    const checkbox = document.getElementById('rulesAccepted');
+    if (!checkbox.checked) {
+        showNotification("Please accept the exam rules first", "error");
+        return;
+    }
+    
+    closeRulesModal();
+    showNotification("Rules accepted! You can now start the exam.", "success");
+    
+    // Optionally start exam automatically
+    // startExamWithVerification();
+}
+
+function closeRulesModal() {
+    const modal = document.querySelector('.fixed.inset-0');
+    if (modal) modal.remove();
+}
+
+// Calibration Wizard Functions
+let calibrationStep = 0;
+let calibrationData = {};
+
+function startCalibration() {
+    showNotification("Starting calibration wizard...", "info");
+    
+    fetch("/api/calibration/start", {
+        method: "POST"
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+            calibrationStep = 0;
+            showCalibrationStep();
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showNotification("Failed to start calibration", "error");
+    });
+}
+
+function showCalibrationStep() {
+    fetch("/api/calibration/status")
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+            const calibration = data.calibration;
+            showCalibrationModal(calibration);
+        }
+    })
+    .catch(err => console.error(err));
+}
+
+function showCalibrationModal(calibration) {
+    // Create modal for calibration step
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">${calibration.title}</h2>
+                <button onclick="closeCalibrationModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <p class="text-gray-600 mb-4">${calibration.description}</p>
+                
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+                    <h3 class="font-semibold text-blue-800 mb-2">Instructions:</h3>
+                    <ul class="list-disc list-inside text-blue-700 space-y-1">
+                        ${calibration.instructions.map(instruction => `<li>${instruction}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                ${calibration.test_type ? `
+                    <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-4">
+                        <p class="text-yellow-700">Click "Test This Step" to run the calibration test.</p>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div class="flex justify-between">
+                <button onclick="closeCalibrationModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                    Cancel
+                </button>
+                <div class="space-x-2">
+                    ${calibration.test_type ? `
+                        <button onclick="testCalibrationStep()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                            Test This Step
+                        </button>
+                    ` : ''}
+                    <button onclick="nextCalibrationStep()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                        ${calibration.test_type ? 'Skip Test' : 'Next Step'}
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-blue-600 h-2 rounded-full" style="width: ${calibration.progress || 0}%"></div>
+                </div>
+                <p class="text-sm text-gray-600 mt-1">Step ${calibration.current_step_index + 1} of ${calibration.total_steps}</p>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function testCalibrationStep() {
+    showNotification("Running calibration test...", "info");
+    
+    fetch("/api/calibration/test", {
+        method: "POST"
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+            const results = data.test_results;
+            showCalibrationResults(results);
+        } else {
+            showNotification("Calibration test failed", "error");
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showNotification("Calibration test error", "error");
+    });
+}
+
+function showCalibrationResults(results) {
+    const resultsModal = document.createElement('div');
+    resultsModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    
+    let recommendations = '';
+    if (results.recommendations && results.recommendations.length > 0) {
+        recommendations = `
+            <div class="mt-4">
+                <h4 class="font-semibold text-gray-800 mb-2">Recommendations:</h4>
+                <ul class="list-disc list-inside text-gray-700 space-y-1">
+                    ${results.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    resultsModal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Calibration Test Results</h3>
+            
+            <div class="mb-4">
+                <p class="text-gray-600">${results.message || 'Test completed'}</p>
+                ${results.verified ? '<p class="text-green-600 font-semibold">✅ Verification Successful</p>' : ''}
+                ${results.status === 'error' ? '<p class="text-red-600 font-semibold">❌ Test Failed</p>' : ''}
+            </div>
+            
+            ${recommendations}
+            
+            <div class="flex justify-end">
+                <button onclick="closeCalibrationResults()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(resultsModal);
+}
+
+function closeCalibrationResults() {
+    const modal = document.querySelector('.fixed.inset-0');
+    if (modal) modal.remove();
+}
+
+function nextCalibrationStep() {
+    fetch("/api/calibration/next", {
+        method: "POST"
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+            const result = data.result;
+            if (result.status === 'completed') {
+                showNotification("Calibration completed successfully!", "success");
+                closeCalibrationModal();
+            } else {
+                showCalibrationStep();
+            }
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showNotification("Failed to proceed to next step", "error");
+    });
+}
+
+function closeCalibrationModal() {
+    const modal = document.querySelector('.fixed.inset-0');
+    if (modal) modal.remove();
 }
 
 // Theme Functions
