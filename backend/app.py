@@ -3,13 +3,28 @@ import cv2
 import time
 import os
 import threading
+import sqlite3
+from flask import Flask, render_template, request, jsonify, Response
+import cv2
+import numpy as np
+from werkzeug.utils import secure_filename
 
+# Import proctoring modules
 from proctoring.face_detection import detect_faces
 from proctoring.eye_head_detection import detect_head_movement
 from proctoring.audio_detection import detect_background_voice
 from proctoring.screen_monitor import detect_tab_switch
 from proctoring.alert_engine import generate_alert, get_last_alert
+from proctoring.screen_recording import start_screen_recording, stop_screen_recording, get_screenshot_count
+from proctoring.face_recognition import initialize_face_recognition, register_new_user, verify_user_identity
+from proctoring.alert_system import initialize_alert_system, create_severity_alert, get_alert_statistics, check_escalation_status
+from proctoring.calibration import start_calibration_wizard, run_calibration_test, get_calibration_status, apply_optimal_settings
+from proctoring.theme_manager import initialize_theme_manager, set_theme, get_current_theme, get_theme_css, get_available_themes
 from database.db import log_event, get_logs
+
+# Import screen recording
+from PIL import ImageGrab
+import datetime
 
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend"))
 app = Flask(__name__, template_folder=FRONTEND_DIR, static_folder=FRONTEND_DIR, static_url_path="")
@@ -20,6 +35,12 @@ app = Flask(__name__, template_folder=FRONTEND_DIR, static_folder=FRONTEND_DIR, 
 exam_running = False
 suspicion_score = 0
 last_alert = ""
+
+# New feature globals
+screen_recording_active = False
+calibration_in_progress = False
+current_theme = "light"
+alert_system_enabled = True
 
 # =====================
 # STREAMING / THREAD STATE
@@ -59,6 +80,168 @@ def home():
 def admin_logs():
     logs = get_logs()
     return render_template("admin.html", logs=logs)
+
+# =====================
+# SCREEN RECORDING ENDPOINTS
+# =====================
+@app.route("/api/screen_recording/toggle", methods=["POST"])
+def toggle_screen_recording_api():
+    global screen_recording_active
+    if screen_recording_active:
+        stop_screen_recording()
+        screen_recording_active = False
+        log_event("Screen recording stopped")
+    else:
+        start_screen_recording()
+        screen_recording_active = True
+        log_event("Screen recording started")
+    return jsonify({"status": "success", "recording": screen_recording_active})
+
+@app.route("/api/screen_recording/stop", methods=["POST"])
+def stop_screen_recording_api():
+    global screen_recording_active
+    if screen_recording_active:
+        stop_screen_recording()
+        screen_recording_active = False
+        log_event("Screen recording stopped")
+    return jsonify({"status": "success", "recording": screen_recording_active})
+
+@app.route("/api/screen_recording/status")
+def screen_recording_status():
+    screenshot_count = get_screenshot_count()
+    return jsonify({
+        "recording": screen_recording_active,
+        "screenshots_taken": screenshot_count
+    })
+
+# =====================
+# FACE RECOGNITION ENDPOINTS
+# =====================
+@app.route("/api/face_recognition/register", methods=["POST"])
+def register_face_api():
+    try:
+        # This would normally get image from request
+        # For now, return instructions
+        return jsonify({
+            "status": "info",
+            "message": "Face registration requires image upload endpoint",
+            "instructions": "Use face registration with proper image capture"
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+@app.route("/api/face_recognition/verify")
+def verify_face_api():
+    global _latest_frame
+    if _latest_frame is None:
+        return jsonify({"status": "error", "message": "No camera feed available"})
+    
+    verification_result = verify_user_identity(_latest_frame)
+    
+    if verification_result['unauthorized_present']:
+        create_severity_alert('unauthorized_face', 'Unauthorized person detected')
+        log_event("Unauthorized face detected")
+        suspicion_score = globals().get('suspicion_score', 0) + 5
+    
+    return jsonify({
+        "status": "success",
+        "verification": verification_result,
+        "authorized": verification_result['authorized_present']
+    })
+
+# =====================
+# ALERT SYSTEM ENDPOINTS
+# =====================
+@app.route("/api/alerts/statistics")
+def alert_statistics_api():
+    stats = get_alert_statistics()
+    return jsonify({"status": "success", "statistics": stats})
+
+@app.route("/api/alerts/recent")
+def recent_alerts_api():
+    count = request.args.get('count', 10, type=int)
+    alerts = initialize_alert_system().get_recent_alerts(count)
+    return jsonify({"status": "success", "alerts": alerts})
+
+@app.route("/api/alerts/escalation/<alert_type>")
+def check_escalation_api(alert_type):
+    escalated = check_escalation_status(alert_type)
+    return jsonify({"status": "success", "escalated": escalated})
+
+# =====================
+# CALIBRATION ENDPOINTS
+# =====================
+@app.route("/api/calibration/start", methods=["POST"])
+def start_calibration_api():
+    global calibration_in_progress
+    if not calibration_in_progress:
+        result = start_calibration_wizard()
+        calibration_in_progress = True
+        log_event("Calibration wizard started")
+    return jsonify({"status": "success", "calibration": result})
+
+@app.route("/api/calibration/test/<step>", methods=["POST"])
+def run_calibration_test_api(step):
+    global _latest_frame
+    frame = _latest_frame if _latest_frame is not None else None
+    
+    result = run_calibration_test(step, frame)
+    return jsonify({"status": "success", "step": step, "result": result})
+
+@app.route("/api/calibration/next", methods=["POST"])
+def calibration_next_step_api():
+    global calibration_in_progress
+    if calibration_in_progress:
+        result = calibration_wizard.next_step()
+        if result.get('status') == 'completed':
+            calibration_in_progress = False
+            log_event("Calibration completed")
+    return jsonify({"status": "success", "result": result})
+
+@app.route("/api/calibration/status")
+def calibration_status_api():
+    status = get_calibration_status()
+    return jsonify({"status": "success", "calibration": status})
+
+@app.route("/api/calibration/settings")
+def calibration_settings_api():
+    settings = apply_optimal_settings()
+    return jsonify({"status": "success", "settings": settings})
+
+# =====================
+# THEME ENDPOINTS
+# =====================
+@app.route("/api/themes")
+def available_themes_api():
+    themes = get_available_themes()
+    current = get_current_theme()
+    css = get_theme_css()
+    
+    return jsonify({
+        "status": "success",
+        "current_theme": current,
+        "available_themes": themes,
+        "css": css
+    })
+
+@app.route("/api/themes/set/<theme_name>", methods=["POST"])
+def set_theme_api(theme_name):
+    success = set_theme(theme_name)
+    if success:
+        global current_theme
+        current_theme = theme_name
+        log_event(f"Theme changed to {theme_name}")
+    
+    return jsonify({
+        "status": "success" if success else "error",
+        "theme": theme_name,
+        "current_theme": get_current_theme()
+    })
+
+@app.route("/themes.css")
+def theme_css_endpoint():
+    css = get_theme_css()
+    return Response(css, mimetype='text/css')
 
 
 # =====================
