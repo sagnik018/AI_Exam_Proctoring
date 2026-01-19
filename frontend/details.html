@@ -7,92 +7,485 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="/themes.css" rel="stylesheet" id="theme-css">
     <style>
+        /* Prevent theme interference */
+        * {
+            transition: none !important;
+            animation: none !important;
+        }
+        
         body {
-            transition: all 0.3s ease;
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
         }
         
         .glass-morphism {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .step-indicator {
             transition: all 0.3s ease;
         }
         
-        .theme-text {
-            color: var(--text-color, #2C3E50) !important;
-            transition: color 0.3s ease;
+        .step-active {
+            background: #4A90E2;
+            color: white;
         }
         
-        .theme-bg {
-            background: var(--surface-color, #FFFFFF) !important;
-            transition: background-color 0.3s ease;
+        .step-completed {
+            background: #10B981;
+            color: white;
         }
         
-        .theme-border {
-            border-color: var(--border-color, #000000) !important;
-            transition: border-color 0.3s ease;
+        .step-inactive {
+            background: #6B7280;
+            color: white;
         }
         
-        /* Fix input field colors - Stronger overrides with cursor fix */
-        input[type="text"],
-        input[type="text"]:focus,
-        input[type="text"]:hover {
-            color: var(--text-color, #2C3E50) !important;
-            background: var(--surface-color, #FFFFFF) !important;
-            border-color: var(--border-color, #000000) !important;
-            cursor: text !important;
-            caret-color: var(--text-color, #2C3E50) !important;
-            outline: none !important;
-            box-shadow: none !important;
-            transition: all 0.1s ease !important;
+        /* Simple stable styles - NO BLINKING */
+        input[type="text"], .form-input {
+            color: #2C3E50;
+            background: #FFFFFF;
+            border: 2px solid #000000;
+            cursor: text;
+            caret-color: #2C3E50;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            outline: none;
+            box-shadow: none;
+            transition: none;
+            animation: none;
+            transform: none;
+            opacity: 1;
+            visibility: visible;
+            position: relative;
+            z-index: 1;
         }
         
-        /* Fix radio button text */
-        input[type="radio"] + span,
-        input[type="radio"]:checked + span,
-        input[type="radio"]:hover + span {
-            color: var(--text-color, #2C3E50) !important;
+        input[type="text"]:focus, .form-input:focus {
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            outline: none;
         }
         
-        /* Fix all text in form */
-        .theme-text,
-        label,
-        .theme-text span {
-            color: var(--text-color, #2C3E50) !important;
+        input[type="text"]:hover, .form-input:hover {
+            border-color: #2563EB;
         }
         
-        /* Fix placeholder colors */
-        input::placeholder {
-            color: var(--text-secondary, #7F8C8D) !important;
-            opacity: 0.7 !important;
+        input[type="radio"] {
+            margin-right: 8px;
         }
         
-        /* Fix form containers */
-        .theme-bg,
-        label.theme-bg,
-        .theme-bg label {
-            background: var(--surface-color, #FFFFFF) !important;
+        input[type="radio"] + span {
+            color: #2C3E50;
         }
         
-        /* Fix borders */
-        .theme-border,
-        label.theme-border,
-        .theme-border label {
-            border-color: var(--border-color, #000000) !important;
+        button {
+            cursor: pointer;
+            padding: 12px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
         }
         
-        /* Remove input animations and transitions */
-        input {
-            animation: none !important;
-            transition: none !important;
-            transform: none !important;
+        .bg-blue-500 {
+            background-color: #3B82F6;
+            color: white;
         }
         
-        input:focus {
-            animation: none !important;
-            transition: none !important;
-            transform: none !important;
+        .bg-green-500 {
+            background-color: #10B981;
+            color: white;
         }
+        
+        .bg-gray-500 {
+            background-color: #6B7280;
+            color: white;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">AI Exam Proctoring</h1>
+            <p class="text-gray-200 font-bold text-lg">Complete verification to start exam</p>
+        </header>
+
+        <!-- Progress Steps -->
+        <div class="max-w-4xl mx-auto mb-8">
+            <div class="flex justify-between items-center">
+                <div class="step-indicator step-active rounded-full w-10 h-10 flex items-center justify-center font-bold" id="step1">
+                    1
+                </div>
+                <div class="flex-1 h-1 bg-gray-300 mx-2" id="progress1"></div>
+                <div class="step-indicator step-inactive rounded-full w-10 h-10 flex items-center justify-center font-bold" id="step2">
+                    2
+                </div>
+                <div class="flex-1 h-1 bg-gray-300 mx-2" id="progress2"></div>
+                <div class="step-indicator step-inactive rounded-full w-10 h-10 flex items-center justify-center font-bold" id="step3">
+                    3
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="max-w-4xl mx-auto">
+            <!-- Step 1: Personal Details -->
+            <section id="detailsSection" class="glass-morphism rounded-xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-6">Step 1: Personal Details</h2>
+                <form id="detailsForm">
+                    <!-- Name Field -->
+                    <div class="mb-6">
+                        <label for="name" class="block font-semibold mb-2">Full Name</label>
+                        <input 
+                            type="text" 
+                            id="name" 
+                            name="name" 
+                            required
+                            class="form-input"
+                            placeholder="Enter your full name"
+                        >
+                    </div>
+
+                    <!-- Gender Field -->
+                    <div class="mb-6">
+                        <label class="block font-semibold mb-2">Gender</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="flex items-center p-3 rounded-lg border-2">
+                                <input type="radio" name="gender" value="male" required class="mr-3">
+                                <span>Male</span>
+                            </label>
+                            <label class="flex items-center p-3 rounded-lg border-2">
+                                <input type="radio" name="gender" value="female" required class="mr-3">
+                                <span>Female</span>
+                            </label>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mt-3">
+                            <label class="flex items-center p-3 rounded-lg border-2">
+                                <input type="radio" name="gender" value="other" required class="mr-3">
+                                <span>Other</span>
+                            </label>
+                            <label class="flex items-center p-3 rounded-lg border-2">
+                                <input type="radio" name="gender" value="prefer_not_to_say" required class="mr-3">
+                                <span>Prefer not to say</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Location Field -->
+                    <div class="mb-6">
+                        <label for="location" class="block font-semibold mb-2">Location</label>
+                        <input 
+                            type="text" 
+                            id="location" 
+                            name="location" 
+                            required
+                            class="form-input"
+                            placeholder="Enter your location (city, country)"
+                        >
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="text-center">
+                        <button 
+                            type="submit" 
+                            class="bg-blue-500"
+                        >
+                            Next - Face Verification →
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Step 2: Face Verification -->
+            <section id="faceSection" class="glass-morphism rounded-xl p-8 hidden">
+                <h2 class="text-2xl font-bold text-white mb-6">Step 2: Face Verification</h2>
+                
+                <div class="text-center mb-6">
+                    <div class="video-container bg-black bg-opacity-20 rounded-lg p-4 mb-4" id="videoContainer">
+                        <img
+                            id="faceVideo"
+                            src=""
+                            alt="Face Verification"
+                            class="rounded-lg mx-auto"
+                            style="max-height: 300px; width: auto; display: none;"
+                        >
+                        <div id="cameraPlaceholder" class="flex items-center justify-center h-64">
+                            <div class="text-center">
+                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                                <p class="text-gray-400">Camera will activate when you reach this step</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="faceStatus" class="mb-4">
+                        <p class="font-semibold">Position your face in the camera</p>
+                        <p class="text-gray-400 text-sm">Make sure your face is clearly visible</p>
+                    </div>
+                    
+                    <div id="verificationResult" class="hidden mb-4">
+                        <div class="p-4 rounded-lg">
+                            <p id="verificationMessage" class="font-semibold"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-center space-x-4">
+                    <button 
+                        id="verifyFaceBtn"
+                        onclick="verifyFace()"
+                        class="bg-green-500"
+                    >
+                        Verify Face
+                    </button>
+                    <button 
+                        onclick="goBackToDetails()"
+                        class="bg-gray-500"
+                    >
+                        ← Back
+                    </button>
+                </div>
+            </section>
+
+            <!-- Step 3: Complete -->
+            <section id="completeSection" class="glass-morphism rounded-xl p-8 hidden">
+                <h2 class="text-2xl font-bold text-white mb-6">Step 3: Verification Complete</h2>
+                
+                <div class="text-center mb-6">
+                    <div class="mb-4">
+                        <svg class="w-16 h-16 mx-auto text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a2 2 0 002-2m-2 0a2 2 0 00-2 2m6 2a2 2 0 002-2m-2 0a2 2 0 00-2 2"></path>
+                        </svg>
+                    </div>
+                    <p class="text-white text-lg font-semibold mb-2">All verifications completed successfully!</p>
+                    <p class="text-gray-300">Your details have been saved and face has been verified.</p>
+                </div>
+
+                <div class="text-center">
+                    <button 
+                        onclick="proceedToMain()"
+                        class="bg-blue-500"
+                    >
+                        Start Exam →
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Handle details form submission with auto-proceed
+        document.getElementById('detailsForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const name = formData.get('name');
+            const gender = formData.get('gender');
+            const location = formData.get('location');
+            
+            // Validate form data
+            if (!name || !gender || !location) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            // Store user details
+            const userDetails = {
+                name: name,
+                gender: gender,
+                location: location
+            };
+            
+            // Submit to backend and then auto-proceed
+            fetch('/submit_details', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Response:', data);
+                if (data.status === "success") {
+                    console.log('User details saved successfully');
+                    // Automatically move to face verification step
+                    moveToStep2();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error submitting form. Please try again.');
+            });
+        });
+
+        function moveToStep2() {
+            // Update progress indicators
+            document.getElementById('step1').className = 'step-indicator step-completed rounded-full w-10 h-10 flex items-center justify-center font-bold';
+            document.getElementById('step2').className = 'step-indicator step-active rounded-full w-10 h-10 flex items-center justify-center font-bold';
+            document.getElementById('progress1').className = 'flex-1 h-1 bg-green-500 mx-2';
+            
+            // Show face verification section
+            document.getElementById('detailsSection').classList.add('hidden');
+            document.getElementById('faceSection').classList.remove('hidden');
+            
+            // Turn on camera for face verification
+            activateCamera();
+        }
+
+        function goBackToDetails() {
+            // Update progress indicators
+            document.getElementById('step1').className = 'step-indicator step-active rounded-full w-10 h-10 flex items-center justify-center font-bold';
+            document.getElementById('step2').className = 'step-indicator step-inactive rounded-full w-10 h-10 flex items-center justify-center font-bold';
+            document.getElementById('progress1').className = 'flex-1 h-1 bg-gray-300 mx-2';
+            
+            // Show details section
+            document.getElementById('faceSection').classList.add('hidden');
+            document.getElementById('detailsSection').classList.remove('hidden');
+            
+            // Turn off camera when going back
+            deactivateCamera();
+        }
+
+        function activateCamera() {
+            const faceVideo = document.getElementById('faceVideo');
+            const placeholder = document.getElementById('cameraPlaceholder');
+            const statusDiv = document.getElementById('faceStatus');
+            
+            // Show camera placeholder initially
+            placeholder.style.display = 'flex';
+            faceVideo.style.display = 'none';
+            
+            // Update status
+            statusDiv.innerHTML = '<p class="font-semibold">Activating camera...</p><p class="text-gray-400 text-sm">Please wait</p>';
+            
+            // Start camera feed after a short delay
+            setTimeout(() => {
+                faceVideo.src = 'http://127.0.0.1:5000/video_feed';
+                faceVideo.style.display = 'block';
+                placeholder.style.display = 'none';
+                statusDiv.innerHTML = '<p class="font-semibold">Position your face in the camera</p><p class="text-gray-400 text-sm">Make sure your face is clearly visible</p>';
+            }, 1000);
+        }
+
+        function deactivateCamera() {
+            const faceVideo = document.getElementById('faceVideo');
+            const placeholder = document.getElementById('cameraPlaceholder');
+            
+            // Stop camera feed
+            faceVideo.src = '';
+            faceVideo.style.display = 'none';
+            placeholder.style.display = 'flex';
+        }
+
+        function verifyFace() {
+            const verifyBtn = document.getElementById('verifyFaceBtn');
+            const statusDiv = document.getElementById('faceStatus');
+            const resultDiv = document.getElementById('verificationResult');
+            const messageDiv = document.getElementById('verificationMessage');
+            
+            // Disable button during verification
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verifying...';
+            
+            fetch("/api/face_recognition/verify_quick", {
+                method: "POST"
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log('Face verification response:', data);
+                if (data.status === "success") {
+                    const verification = data.verification;
+                    
+                    if (verification.verified) {
+                        resultDiv.className = 'p-4 rounded-lg bg-green-100 border border-green-400';
+                        messageDiv.textContent = verification.message;
+                        resultDiv.classList.remove('hidden');
+                        
+                        console.log('Face verification successful');
+                        // Automatically move to completion step
+                        setTimeout(() => moveToStep3(), 1000);
+                    } else {
+                        resultDiv.className = 'p-4 rounded-lg bg-red-100 border border-red-400';
+                        messageDiv.textContent = verification.message;
+                        resultDiv.classList.remove('hidden');
+                    }
+                } else {
+                    resultDiv.className = 'p-4 rounded-lg bg-red-100 border border-red-400';
+                    messageDiv.textContent = 'Face verification failed';
+                    resultDiv.classList.remove('hidden');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                resultDiv.className = 'p-4 rounded-lg bg-red-100 border border-red-400';
+                messageDiv.textContent = 'Face verification error';
+                resultDiv.classList.remove('hidden');
+            })
+            .finally(() => {
+                // Re-enable button
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = 'Verify Face';
+            });
+        }
+
+        function moveToStep3() {
+            // Update progress indicators
+            document.getElementById('step2').className = 'step-indicator step-completed rounded-full w-10 h-10 flex items-center justify-center font-bold';
+            document.getElementById('step3').className = 'step-indicator step-active rounded-full w-10 h-10 flex items-center justify-center font-bold';
+            document.getElementById('progress2').className = 'flex-1 h-1 bg-green-500 mx-2';
+            
+            // Show complete section
+            document.getElementById('faceSection').classList.add('hidden');
+            document.getElementById('completeSection').classList.remove('hidden');
+            
+            // Automatically proceed to main exam after 2 seconds
+            console.log('All verifications completed! Redirecting to exam in 2 seconds...');
+            setTimeout(() => {
+                // Mark verification as complete
+                localStorage.setItem('userDetailsProvided', 'true');
+                localStorage.setItem('faceVerified', 'true');
+                
+                // Redirect to main exam page
+                window.location.href = '/exam';
+            }, 2000);
+        }
+
+                
+        // Function to clear verification (for testing or re-verification)
+        function clearVerification() {
+            localStorage.removeItem('userDetailsProvided');
+            localStorage.removeItem('faceVerified');
+            location.reload();
+        }
+        
+        // Check if verification needs to be reset
+        function checkVerificationStatus() {
+            const userDetailsProvided = localStorage.getItem('userDetailsProvided');
+            const faceVerified = localStorage.getItem('faceVerified');
+            
+            // If either verification is missing, reset to step 1
+            if (!userDetailsProvided || !faceVerified) {
+                clearVerification();
+            }
+        }
+        
+        // Check verification status on load
+        checkVerificationStatus();
+    </script>
+</body>
+</html>
         
         .step-indicator {
             transition: all 0.3s ease;
@@ -138,9 +531,9 @@
                 </div>
             </div>
             <div class="flex justify-between mt-2 text-sm">
-                <span class="theme-text font-semibold">Personal Details</span>
-                <span class="theme-text font-semibold">Face Verification</span>
-                <span class="theme-text font-semibold">Complete</span>
+                <span class="font-semibold">Personal Details</span>
+                <span class="font-semibold">Face Verification</span>
+                <span class="font-semibold">Complete</span>
             </div>
         </div>
 
@@ -207,7 +600,7 @@
                     <div class="text-center">
                         <button 
                             type="submit" 
-                            class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                            class="bg-blue-500"
                         >
                             Next - Face Verification →
                         </button>
@@ -246,7 +639,7 @@
                     </div>
                     
                     <div id="faceStatus" class="mb-4">
-                        <p class="theme-text font-semibold">Position your face in the camera</p>
+                        <p class="font-semibold">Position your face in the camera</p>
                         <p class="text-gray-400 text-sm">Make sure your face is clearly visible</p>
                     </div>
                     
@@ -261,13 +654,13 @@
                     <button 
                         id="verifyFaceBtn"
                         onclick="verifyFace()"
-                        class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                        class="bg-green-500"
                     >
                         Verify Face
                     </button>
                     <button 
                         onclick="goBackToDetails()"
-                        class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200"
+                        class="bg-gray-500"
                     >
                         ← Back
                     </button>
@@ -291,7 +684,7 @@
                 <div class="text-center">
                     <button 
                         onclick="proceedToMain()"
-                        class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                        class="bg-blue-500"
                     >
                         Start Exam →
                     </button>
@@ -304,7 +697,7 @@
         let userDetails = {};
         let faceVerified = false;
 
-        // Load current theme
+        // Load current theme immediately for faster loading
         fetch('/api/themes')
             .then(response => response.json())
             .then(data => {
@@ -370,16 +763,45 @@
                 return;
             }
             
-            userDetails = {
-                name: name,
-                gender: gender,
-                location: location
-            };
+            // Show loading state
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Submitting...';
+            submitBtn.disabled = true;
             
-            console.log('User details saved:', userDetails); // Debug log
-            
-            // Move to face verification step
-            moveToStep2();
+            // Submit to backend
+            fetch('/submit_details', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Response:', data); // Debug log
+                
+                if (data.status === "success") {
+                    userDetails = {
+                        name: name,
+                        gender: gender,
+                        location: location
+                    };
+                    
+                    console.log('User details saved:', userDetails); // Debug log
+                    
+                    // Move to face verification step
+                    moveToStep2();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error submitting form. Please try again.');
+            })
+            .finally(() => {
+                // Reset button state
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            });
         });
 
         function moveToStep2() {
@@ -420,14 +842,14 @@
             faceVideo.style.display = 'none';
             
             // Update status
-            statusDiv.innerHTML = '<p class="theme-text font-semibold">Activating camera...</p><p class="text-gray-400 text-sm">Please wait</p>';
+            statusDiv.innerHTML = '<p class="font-semibold">Activating camera...</p><p class="text-gray-400 text-sm">Please wait</p>';
             
             // Start camera feed after a short delay
             setTimeout(() => {
                 faceVideo.src = 'http://127.0.0.1:5000/video_feed';
                 faceVideo.style.display = 'block';
                 placeholder.style.display = 'none';
-                statusDiv.innerHTML = '<p class="theme-text font-semibold">Position your face in the camera</p><p class="text-gray-400 text-sm">Make sure your face is clearly visible</p>';
+                statusDiv.innerHTML = '<p class="font-semibold">Position your face in the camera</p><p class="text-gray-400 text-sm">Make sure your face is clearly visible</p>';
             }, 1000);
         }
 
@@ -452,7 +874,7 @@
             verifyBtn.textContent = 'Verifying...';
             
             // Show verification status
-            statusDiv.innerHTML = '<p class="theme-text font-semibold">Verifying face...</p><p class="text-gray-400 text-sm">Please wait</p>';
+            statusDiv.innerHTML = '<p class="font-semibold">Verifying face...</p><p class="text-gray-400 text-sm">Please wait</p>';
             
             // Call face verification API
             fetch('/api/face_recognition/verify_quick', {
@@ -533,19 +955,19 @@
             document.getElementById('faceSection').classList.add('hidden');
             document.getElementById('completeSection').classList.remove('hidden');
             
-            // Turn off camera after successful verification
-            deactivateCamera();
+            // Automatically proceed to main exam after 2 seconds
+            console.log('All verifications completed! Redirecting to exam in 2 seconds...');
+            setTimeout(() => {
+                // Mark verification as complete
+                localStorage.setItem('userDetailsProvided', 'true');
+                localStorage.setItem('faceVerified', 'true');
+                
+                // Redirect to main exam page
+                window.location.href = '/exam';
+            }, 2000);
         }
 
-        function proceedToMain() {
-            // Mark verification as complete
-            localStorage.setItem('userDetailsProvided', 'true');
-            localStorage.setItem('faceVerified', 'true');
-            
-            // Redirect to main exam page
-            window.location.href = '/exam';
-        }
-        
+                
         // Function to clear verification (for testing or re-verification)
         function clearVerification() {
             localStorage.removeItem('userDetailsProvided');

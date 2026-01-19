@@ -174,7 +174,7 @@ function closeRulesModal() {
 let calibrationStep = 0;
 let calibrationData = {};
 
-function startCalibration() {
+function startCalibrationWizard() {
     showNotification("Starting calibration wizard...", "info");
     
     fetch("/api/calibration/start", {

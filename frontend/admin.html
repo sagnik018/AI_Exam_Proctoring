@@ -45,21 +45,15 @@
             <!-- Stats Cards -->
             <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div class="glass-morphism rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-white mb-1">{{ logs|length }}</div>
+                    <div class="text-2xl font-bold text-white mb-1" id="totalEvents">0</div>
                     <div class="text-gray-200 text-sm">Total Events</div>
                 </div>
                 <div class="glass-morphism rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-yellow-400 mb-1">
-                        {% set face_count = logs|selectattr('0', 'contains', 'face')|list|length %}
-                        {{ face_count }}
-                    </div>
+                    <div class="text-2xl font-bold text-yellow-400 mb-1" id="faceCount">0</div>
                     <div class="text-gray-200 text-sm">Face Detection Issues</div>
                 </div>
                 <div class="glass-morphism rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-red-400 mb-1">
-                        {% set head_count = logs|selectattr('0', 'contains', 'head')|list|length %}
-                        {{ head_count }}
-                    </div>
+                    <div class="text-2xl font-bold text-red-400 mb-1" id="headCount">0</div>
                     <div class="text-gray-200 text-sm">Head Movement Alerts</div>
                 </div>
             </section>
@@ -81,70 +75,27 @@
                     </button>
                 </div>
 
-                {% if logs %}
-                <div class="logs-table">
+                <div class="logs-table" id="logsTableContainer">
                     <table class="w-full text-white">
                         <thead>
-                            <tr class="border-b border-gray-400 sticky top-0 bg-gray-800 bg-opacity-90">
-                                <th class="text-left py-2 px-3 font-semibold text-sm">Event Type</th>
-                                <th class="text-left py-2 px-3 font-semibold text-sm">Timestamp</th>
-                                <th class="text-left py-2 px-3 font-semibold text-sm">Severity</th>
+                            <tr class="border-b border-gray-600">
+                                <th class="py-2 px-3 text-left">Event</th>
+                                <th class="py-2 px-3 text-left">Time</th>
+                                <th class="py-2 px-3 text-left">Severity</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for log in logs %}
-                            <tr class="table-row-hover border-b border-gray-600">
-                                <td class="py-2 px-3">
-                                    <div class="flex items-center">
-                                        {% if 'face' in log[0] %}
-                                            <svg class="w-4 h-4 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                            </svg>
-                                        {% elif 'head' in log[0] %}
-                                            <svg class="w-4 h-4 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-                                            </svg>
-                                        {% elif 'tab' in log[0] %}
-                                            <svg class="w-4 h-4 mr-2 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                                            </svg>
-                                        {% elif 'voice' in log[0] %}
-                                            <svg class="w-4 h-4 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                                            </svg>
-                                        {% else %}
-                                            <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            </svg>
-                                        {% endif %}
-                                        <span class="font-medium text-sm">{{ log[0] }}</span>
-                                    </div>
-                                </td>
-                                <td class="py-2 px-3 text-gray-300 text-sm">{{ log[1] }}</td>
-                                <td class="py-2 px-3">
-                                    {% if 'multiple' in log[0] or 'abnormal' in log[0] %}
-                                        <span class="bg-red-500 bg-opacity-80 text-white text-xs font-semibold px-2 py-1 rounded-full">High</span>
-                                    {% elif 'no face' in log[0] or 'tab' in log[0] %}
-                                        <span class="bg-yellow-500 bg-opacity-80 text-white text-xs font-semibold px-2 py-1 rounded-full">Medium</span>
-                                    {% else %}
-                                        <span class="bg-blue-500 bg-opacity-80 text-white text-xs font-semibold px-2 py-1 rounded-full">Low</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
+                        <tbody id="logsTableBody">
+                            <!-- Logs will be populated by JavaScript -->
                         </tbody>
                     </table>
                 </div>
-                {% else %}
-                <div class="text-center py-8">
+                <div id="noLogsMessage" class="text-center py-8" style="display: none;">
                     <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                     <p class="text-gray-300">No suspicious events detected yet</p>
-                    <p class="text-gray-400 text-sm mt-1">Events will appear here when the system detects violations</p>
+                    <p class="text-gray-400 text-sm mt-1">Events will appear here when system detects violations</p>
                 </div>
-                {% endif %}
             </section>
 
             <!-- Footer Actions -->
@@ -158,5 +109,98 @@
             </section>
         </main>
     </div>
+    
+    <script>
+        // Fetch logs and render them
+        async function fetchLogs() {
+            try {
+                const response = await fetch('/admin_logs');
+                const logs = await response.json();
+                
+                renderLogs(logs);
+                updateStats(logs);
+            } catch (error) {
+                console.error('Error fetching logs:', error);
+                document.getElementById('noLogsMessage').style.display = 'block';
+                document.getElementById('logsTableContainer').style.display = 'none';
+            }
+        }
+        
+        function renderLogs(logs) {
+            const tbody = document.getElementById('logsTableBody');
+            const noLogsMsg = document.getElementById('noLogsMessage');
+            const tableContainer = document.getElementById('logsTableContainer');
+            
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = '';
+                noLogsMsg.style.display = 'block';
+                tableContainer.style.display = 'none';
+                return;
+            }
+            
+            noLogsMsg.style.display = 'none';
+            tableContainer.style.display = 'block';
+            
+            tbody.innerHTML = logs.map(log => {
+                const icon = getEventIcon(log[0]);
+                const severity = getSeverity(log[0]);
+                
+                return `
+                    <tr class="table-row-hover border-b border-gray-600">
+                        <td class="py-2 px-3">
+                            <div class="flex items-center">
+                                ${icon}
+                                <span class="font-medium text-sm">${log[0]}</span>
+                            </div>
+                        </td>
+                        <td class="py-2 px-3 text-gray-300 text-sm">${log[1]}</td>
+                        <td class="py-2 px-3">
+                            ${severity}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function getEventIcon(event) {
+            if (event.includes('face')) {
+                return '<svg class="w-4 h-4 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>';
+            } else if (event.includes('head')) {
+                return '<svg class="w-4 h-4 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>';
+            } else if (event.includes('tab')) {
+                return '<svg class="w-4 h-4 mr-2 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>';
+            } else if (event.includes('voice')) {
+                return '<svg class="w-4 h-4 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>';
+            } else {
+                return '<svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+            }
+        }
+        
+        function getSeverity(event) {
+            if (event.includes('multiple') || event.includes('abnormal')) {
+                return '<span class="bg-red-500 bg-opacity-80 text-white text-xs font-semibold px-2 py-1 rounded-full">High</span>';
+            } else if (event.includes('no face') || event.includes('tab')) {
+                return '<span class="bg-yellow-500 bg-opacity-80 text-white text-xs font-semibold px-2 py-1 rounded-full">Medium</span>';
+            } else {
+                return '<span class="bg-blue-500 bg-opacity-80 text-white text-xs font-semibold px-2 py-1 rounded-full">Low</span>';
+            }
+        }
+        
+        function updateStats(logs) {
+            const totalEvents = logs ? logs.length : 0;
+            const faceCount = logs ? logs.filter(log => log[0].includes('face')).length : 0;
+            const headCount = logs ? logs.filter(log => log[0].includes('head')).length : 0;
+            
+            document.getElementById('totalEvents').textContent = totalEvents;
+            document.getElementById('faceCount').textContent = faceCount;
+            document.getElementById('headCount').textContent = headCount;
+        }
+        
+        // Auto-refresh logs every 5 seconds
+        setInterval(fetchLogs, 5000);
+        
+        // Initial load
+        fetchLogs();
+    </script>
 </body>
 </html>
