@@ -4,14 +4,18 @@
 let examRunning = false;
 
 function startExam() {
-    fetch("http://127.0.0.1:5000/start_exam")
-        .then(res => {
-            if (res.ok) {
+    fetch("http://127.0.0.1:5000/start_exam", {
+        method: "POST"
+    })
+        .then(async (res) => {
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.status === "success") {
                 examRunning = true;
                 updateExamStatus("Exam Running", "green");
                 showNotification("Exam started successfully", "success");
             } else {
-                showNotification("Failed to start exam", "error");
+                const msg = data.message || "Failed to start exam";
+                showNotification(msg, "error");
             }
         })
         .catch(err => {

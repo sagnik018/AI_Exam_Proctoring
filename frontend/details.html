@@ -405,7 +405,7 @@
 
             // Warn if verification is taking too long
             const slowWarningTimer = setTimeout(() => {
-                resultDiv.className = 'p-4 rounded-lg bg-yellow-100 border border-yellow-400';
+                resultDiv.className = 'p-4 rounded-lg bg-black text-white border border-black';
                 messageDiv.textContent = 'Verification is taking longer than usual. Please ensure your camera is working and the server is running.';
                 resultDiv.classList.remove('hidden');
             }, 5000);
@@ -416,10 +416,14 @@
 
             fetch("/api/face_recognition/verify_quick", {
                 method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ store_snapshot: true }),
                 signal: controller.signal
             })
             .then(res => res.json())
-            .then(data => {
+            .then(async (data) => {
                 console.log('Face verification response:', data);
                 if (data.status === "success") {
                     const verification = data.verification;
@@ -433,8 +437,85 @@
                         // Automatically move to completion step
                         setTimeout(() => moveToStep3(), 1000);
                     } else {
-                        resultDiv.className = 'p-4 rounded-lg bg-red-100 border border-red-400';
-                        messageDiv.textContent = verification.message;
+                        if (verification.status === 'no_registered_faces') {
+                            const nameEl = document.getElementById('name');
+                            const name = (nameEl && nameEl.value ? nameEl.value : '').trim();
+
+                            if (!name) {
+                                resultDiv.className = 'p-4 rounded-lg bg-black text-white border border-black';
+                                messageDiv.textContent = 'Please enter your name in Step 1 before registering.';
+                                resultDiv.classList.remove('hidden');
+                                return;
+                            }
+
+                            resultDiv.className = 'p-4 rounded-lg bg-black text-white border border-black';
+                            messageDiv.textContent = 'No registered faces found. Registering you now...';
+                            resultDiv.classList.remove('hidden');
+
+                            const regRes = await fetch('/api/face_recognition/register', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ name }),
+                                signal: controller.signal
+                            });
+                            const regData = await regRes.json().catch(() => ({}));
+
+                            if (!regRes.ok || regData.status !== 'success') {
+                                resultDiv.className = 'p-4 rounded-lg bg-red-100 border border-red-400';
+                                messageDiv.textContent = regData.message || 'Face registration failed. Please ensure your face is clearly visible.';
+                                resultDiv.classList.remove('hidden');
+                                return;
+                            }
+
+                            resultDiv.className = 'p-4 rounded-lg bg-black text-white border border-black';
+                            messageDiv.textContent = 'Registered successfully. Verifying...';
+                            resultDiv.classList.remove('hidden');
+
+                            const retryRes = await fetch('/api/face_recognition/verify_quick', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ store_snapshot: true }),
+                                signal: controller.signal
+                            });
+                            const retryData = await retryRes.json().catch(() => ({}));
+
+                            if (!retryRes.ok || retryData.status !== 'success') {
+                                resultDiv.className = 'p-4 rounded-lg bg-red-100 border border-red-400';
+                                messageDiv.textContent = retryData.message || 'Face verification failed after registration.';
+                                resultDiv.classList.remove('hidden');
+                                return;
+                            }
+
+                            const retryVerification = retryData.verification || {};
+                            if (retryVerification.verified) {
+                                resultDiv.className = 'p-4 rounded-lg bg-green-100 border border-green-400';
+                                messageDiv.textContent = retryVerification.message || 'Face verified successfully';
+                                resultDiv.classList.remove('hidden');
+                                setTimeout(() => moveToStep3(), 1000);
+                                return;
+                            }
+                        }
+
+                        const warningStatuses = new Set([
+                            'no_registered_faces',
+                            'poor_lighting',
+                            'overexposed',
+                            'low_contrast',
+                            'no_face_detected',
+                            'face_too_small'
+                        ]);
+                        const isWarning = warningStatuses.has(verification.status);
+
+                        resultDiv.className = isWarning
+                            ? 'p-4 rounded-lg bg-black text-white border border-black'
+                            : 'p-4 rounded-lg bg-red-100 border border-red-400';
+
+                        const advice = verification.lighting_advice ? ` ${verification.lighting_advice}` : '';
+                        messageDiv.textContent = `${verification.message || 'Face verification failed'}${advice}`;
                         resultDiv.classList.remove('hidden');
                     }
                 } else {
@@ -446,7 +527,7 @@
             .catch(err => {
                 console.error(err);
                 if (err && err.name === 'AbortError') {
-                    resultDiv.className = 'p-4 rounded-lg bg-yellow-100 border border-yellow-400';
+                    resultDiv.className = 'p-4 rounded-lg bg-black text-white border border-black';
                     messageDiv.textContent = 'Verification timed out. Please try again.';
                     resultDiv.classList.remove('hidden');
                 } else {
