@@ -218,7 +218,26 @@
                 
                 <div class="text-center mb-6">
                     <div class="video-container bg-black bg-opacity-20 rounded-lg p-4 mb-4" id="videoContainer">
-                        <video id="video" width="640" height="480" autoplay muted class="mx-auto"></video>
+                        <!-- Camera Feed -->
+                        <video id="video" width="640" height="480" autoplay playsinline muted class="mx-auto hidden"></video>
+                        
+                        <!-- Camera Placeholder -->
+                        <div id="cameraPlaceholder" class="flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg">
+                            <div class="bg-blue-100 p-4 rounded-full mb-4">
+                                <i class="fas fa-camera text-blue-600 text-2xl"></i>
+                            </div>
+                            <p class="text-white font-medium">Camera Access Required</p>
+                            <p class="text-gray-400 text-sm mt-1">We need access to your camera for face verification</p>
+                            <button id="enableCameraBtn" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center">
+                                <i class="fas fa-camera mr-2"></i>Enable Camera
+                            </button>
+                        </div>
+                        
+                        <!-- Camera Status -->
+                        <div id="cameraStatus" class="mt-2 text-sm text-gray-300">
+                            <p>Camera is off</p>
+                        </div>
+                        
                         <canvas id="canvas" class="hidden"></canvas>
                     </div>
                     
@@ -418,6 +437,25 @@
         verifyBtn?.addEventListener('click', verifyFace);
         backBtn?.addEventListener('click', goBackToDetails);
         viewRulesBtn?.addEventListener('click', () => examRulesModal?.classList.remove('hidden'));
+        
+        // Enable camera button
+        const enableCameraBtn = document.getElementById('enableCameraBtn');
+        if (enableCameraBtn) {
+            enableCameraBtn.addEventListener('click', () => {
+                enableCameraBtn.disabled = true;
+                enableCameraBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Enabling...';
+                
+                activateCamera()
+                    .then(() => {
+                        enableCameraBtn.classList.add('hidden');
+                    })
+                    .catch(error => {
+                        console.error('Failed to enable camera:', error);
+                        enableCameraBtn.disabled = false;
+                        enableCameraBtn.innerHTML = '<i class="fas fa-camera mr-2"></i>Try Again';
+                    });
+            });
+        }
         closeRulesBtn?.addEventListener('click', () => examRulesModal?.classList.add('hidden'));
         understandBtn?.addEventListener('click', () => examRulesModal?.classList.add('hidden'));
         
@@ -448,50 +486,106 @@
         
         // Face verification function
         async function verifyFace() {
-            // Disable verify button during verification
-            verifyBtn.disabled = true;
-            verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Verifying...';
+            const verificationStatus = document.getElementById('verificationStatus');
+            const verificationIcon = document.getElementById('verificationIcon');
+            const verificationMessage = document.getElementById('verificationMessage');
+            const verificationDetails = document.getElementById('verificationDetails');
+            const verifyBtn = document.getElementById('verifyBtn');
             
-            // Reset status
+            // Show verifying status
             verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-blue-50 border-l-4 border-blue-500';
             verificationIcon.className = 'fas fa-spinner fa-spin text-blue-500';
-            verificationMessage.textContent = 'Verifying face...';
+            verificationMessage.textContent = 'Verifying...';
             verificationDetails.textContent = 'Please wait while we verify your identity';
             verificationStatus.classList.remove('hidden');
-
+            
+            // Disable verify button during verification
+            verifyBtn.disabled = true;
+            verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Verifying...';
+            
             try {
-                const response = await fetch('/api/face_recognition/verify_quick', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ store_snapshot: true })
-                });
+                // First, ensure the camera is active
+                if (!video.srcObject || !video.srcObject.active) {
+                    try {
+                        await activateCamera();
+                    } catch (cameraError) {
+                        throw new Error('Camera initialization failed. Please check camera permissions and try again.');
+                    }
+                }
+                
+                // Get user's name from the form or local storage
+                const name = document.getElementById('name')?.value?.trim();
+                if (!name) {
+                    throw new Error('Name is required. Please go back and enter your name.');
+                }
+                
+                // Update status to show we're capturing the frame
+                verificationDetails.textContent = 'Capturing your image...';
+                
+                // First try to verify the user
+                let verifyResponse;
+                try {
+                    verifyResponse = await fetch('/api/face_recognition/verify_quick', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            store_snapshot: true,
+                            name: name
+                        })
+                    });
+                    
+                    if (!verifyResponse.ok) {
+                        const errorData = await verifyResponse.json().catch(() => ({}));
+                        throw new Error(errorData.message || 'Server error during verification');
+                    }
+                } catch (fetchError) {
+                    console.error('Fetch error:', fetchError);
+                    throw new Error('Connection error. Please check your internet connection and try again.');
+                }
 
-                const data = await response.json();
+                let data;
+                try {
+                    data = await verifyResponse.json();
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    throw new Error('Invalid response from server. Please try again.');
+                }
                 
                 if (data.verification?.status === 'verified') {
                     // Success - verified
                     verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-green-50 border-l-4 border-green-500';
                     verificationIcon.className = 'fas fa-check-circle text-green-500';
-                    verificationMessage.textContent = `Verified: ${data.verification.name || 'User'}`;
+                    verificationMessage.textContent = `Verified: ${data.verification.name || name}`;
                     verificationDetails.textContent = 'Face verification successful. Proceeding to exam...';
+                    
+                    // Save user details
+                    localStorage.setItem('userName', name);
                     
                     // Move to next step after a short delay
                     setTimeout(moveToStep3, 1500);
-                } 
-                else if (data.verification?.status === 'no_registered_faces' || 
-                         data.verification?.status === 'model_not_trained') {
-                    // No registered faces - try to auto-register
-                    const name = document.getElementById('name')?.value?.trim() || 
-                                localStorage.getItem('userName') || 'User';
+                    return;
+                }
+                
+                // If no registered faces or model not trained, try to register
+                if (data.verification?.status === 'no_registered_faces' || 
+                    data.verification?.status === 'model_not_trained' ||
+                    data.verification?.status === 'face_not_recognized') {
                     
                     verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-yellow-50 border-l-4 border-yellow-500';
                     verificationIcon.className = 'fas fa-user-plus text-yellow-500';
-                    verificationMessage.textContent = 'No registered face found';
-                    verificationDetails.textContent = 'Registering your face now...';
+                    verificationMessage.textContent = 'Registering New User';
+                    verificationDetails.textContent = `Registering ${name}...`;
                     
-                    // Auto-register the user
+                    // Ensure we have a good face image before proceeding
+                    if (data.verification?.face_detected === false) {
+                        throw new Error('No face detected. Please ensure your face is clearly visible in the camera.');
+                    }
+                    
+                    if (data.verification?.image_quality === 'poor') {
+                        throw new Error('Image quality is poor. Please ensure good lighting and try again.');
+                    }
+                    
+                    // Register the user
                     const registerResponse = await fetch('/api/face_recognition/register', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -501,44 +595,42 @@
                     const registerData = await registerResponse.json();
                     
                     if (registerData.status === 'success') {
+                        // Registration successful, verify again
                         verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-green-50 border-l-4 border-green-500';
                         verificationIcon.className = 'fas fa-check-circle text-green-500';
                         verificationMessage.textContent = 'Registration Successful';
                         verificationDetails.textContent = 'Your face has been registered. Verifying...';
                         
-                        // Retry verification after registration
-                        setTimeout(verifyFace, 1000);
+                        // Save user details
+                        localStorage.setItem('userName', name);
+                        
+                        // Proceed to next step after a short delay
+                        setTimeout(moveToStep3, 1500);
+                        return;
                     } 
                     else if (registerData.status === 'already_registered') {
+                        // User already exists, proceed to exam
                         verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-green-50 border-l-4 border-green-500';
                         verificationIcon.className = 'fas fa-check-circle text-green-500';
                         verificationMessage.textContent = 'Already Registered';
-                        verificationDetails.textContent = 'Your face is already registered. Proceeding...';
+                        verificationDetails.textContent = 'Your face is already registered. Proceeding to exam...';
                         
-                        // Proceed to next step
+                        // Save user details
+                        localStorage.setItem('userName', name);
+                        
+                        // Proceed to next step after a short delay
                         setTimeout(moveToStep3, 1500);
+                        return;
                     } 
                     else {
-                        throw new Error(registerData.message || 'Registration failed');
+                        throw new Error(registerData.message || 'Registration failed. Please try again.');
                     }
                 }
-                else if (data.verification?.status === 'already_registered') {
-                    // Face already registered
-                    verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-green-50 border-l-4 border-green-500';
-                    verificationIcon.className = 'fas fa-check-circle text-green-500';
-                    verificationMessage.textContent = 'Already Registered';
-                    verificationDetails.textContent = 'This face is already registered. Proceeding...';
-                    
-                    // Proceed to next step
-                    setTimeout(moveToStep3, 1500);
-                }
-                else {
-                    // Other errors
-                    const errorMsg = data.verification?.message || 'Verification failed. Please try again.';
-                    const error = new Error(errorMsg);
-                    error.isVerificationError = true;
-                    throw error;
-                }
+                
+                // Handle other verification errors
+                const errorMsg = data.verification?.message || 'Verification failed. Please try again.';
+                throw new Error(errorMsg);
+                
             } catch (error) {
                 console.error('Verification error:', error);
                 
@@ -546,27 +638,51 @@
                 verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-red-50 border-l-4 border-red-500 text-black';
                 verificationIcon.className = 'fas fa-exclamation-circle text-red-500';
                 verificationMessage.textContent = 'Verification Failed';
-                verificationDetails.textContent = error.message || 'An error occurred during verification. Please try again.';
-                verificationDetails.className = 'text-black';
                 
-                // If it's a verification error and camera isn't active, try to start it
-                if (error.isVerificationError && (!video.srcObject || !video.srcObject.active)) {
-                    console.log('Attempting to restart camera...');
-                    activateCamera().catch(e => {
-                        console.error('Failed to restart camera:', e);
-                        verificationDetails.textContent = 'Camera not available. Please check permissions and try again.';
-                    });
+                // More specific error messages
+                let errorMessage = error.message || 'An error occurred during verification. Please try again.';
+                
+                // Common error patterns and their user-friendly messages
+                const errorPatterns = [
+                    { pattern: /camera|permission/i, message: 'Camera access denied. Please allow camera permissions and try again.' },
+                    { pattern: /network|internet|fetch/i, message: 'Network error. Please check your internet connection and try again.' },
+                    { pattern: /face.*not.*found|no.*face/i, message: 'No face detected. Please ensure your face is clearly visible in the camera.' },
+                    { pattern: /poor.*lighting|lighting.*poor/i, message: 'Poor lighting detected. Please move to a well-lit area and try again.' },
+                    { pattern: /multiple.*faces/i, message: 'Multiple faces detected. Please ensure only your face is visible in the camera.' },
+                    { pattern: /server|internal/i, message: 'Server error. Please try again in a few moments.' }
+                ];
+                
+                // Find a matching error pattern
+                const matchedPattern = errorPatterns.find(pattern => pattern.pattern.test(errorMessage));
+                if (matchedPattern) {
+                    errorMessage = matchedPattern.message;
                 }
                 
-                // Show error alert
-                showAlert('error', error.message || 'Verification failed. Please try again.');
+                verificationDetails.textContent = errorMessage;
+                
+                // Add retry button for recoverable errors
+                const isRecoverable = !errorMessage.includes('server') && !errorMessage.includes('internet');
+                if (isRecoverable) {
+                    const retryBtn = document.createElement('button');
+                    retryBtn.className = 'mt-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-4 rounded';
+                    retryBtn.innerHTML = '<i class=\'fas fa-sync-alt mr-2\'></i>Try Again';
+                    retryBtn.onclick = () => {
+                        verifyFace().catch(console.error);
+                    };
+                    verificationDetails.appendChild(document.createElement('br'));
+                    verificationDetails.appendChild(retryBtn);
+                }
+                
+                // Show error alert with the same message
+                showAlert('error', errorMessage);
             } finally {
                 // Re-enable verify button
-                verifyBtn.disabled = false;
-                verifyBtn.innerHTML = '<i class="fas fa-user-check mr-2"></i>Verify Face';
+                const verifyBtn = document.getElementById('verifyBtn');
+                if (verifyBtn) {
+                    verifyBtn.disabled = false;
+                    verifyBtn.innerHTML = '<i class="fas fa-user-check mr-2"></i>Verify Face';
+                }
             }
-        }
-        
         
         // Function to move to step 3
         function moveToStep3() {
@@ -592,36 +708,73 @@
         }
         
         // Function to activate camera
-        function activateCamera() {
-            const faceVideo = document.getElementById('faceVideo');
+        async function activateCamera() {
+            const video = document.getElementById('video');
             const placeholder = document.getElementById('cameraPlaceholder');
-            const statusDiv = document.getElementById('faceStatus');
-            
-            // Show camera placeholder initially
-            placeholder.style.display = 'flex';
-            faceVideo.style.display = 'none';
+            const statusDiv = document.getElementById('cameraStatus');
+            const enableCameraBtn = document.getElementById('enableCameraBtn');
             
             // Update status
-            statusDiv.innerHTML = '<p class="font-semibold">Activating camera...</p><p class="text-gray-400 text-sm">Please wait</p>';
+            statusDiv.innerHTML = '<p class="text-yellow-400">Requesting camera access...</p>';
             
-            // Start camera feed after a short delay
-            setTimeout(() => {
-                faceVideo.src = 'http://127.0.0.1:5000/video_feed';
-                faceVideo.style.display = 'block';
-                placeholder.style.display = 'none';
-                statusDiv.innerHTML = '<p class="font-semibold">Position your face in the camera</p><p class="text-gray-400 text-sm">Make sure your face is clearly visible</p>';
-            }, 1000);
+            try {
+                // Request camera access
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'  // Use front camera
+                    },
+                    audio: false
+                });
+                
+                // Show video element and hide placeholder
+                video.srcObject = stream;
+                video.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                
+                // Update status
+                statusDiv.innerHTML = '<p class="text-green-400">Camera is active</p>';
+                
+                // Return the stream so it can be stopped later
+                return stream;
+                
+            } catch (error) {
+                console.error('Camera access error:', error);
+                
+                // Update status with error
+                statusDiv.innerHTML = `
+                    <p class="text-red-400">Camera access denied</p>
+                    <p class="text-gray-400 text-xs mt-1">${error.message || 'Please check your camera permissions'}</p>
+                `;
+                
+                // Show enable button
+                enableCameraBtn.classList.remove('hidden');
+                
+                throw error;
+            }
         }
         
         // Function to deactivate camera
         function deactivateCamera() {
-            const faceVideo = document.getElementById('faceVideo');
+            const video = document.getElementById('video');
             const placeholder = document.getElementById('cameraPlaceholder');
+            const statusDiv = document.getElementById('cameraStatus');
             
-            // Stop camera feed
-            faceVideo.src = '';
-            faceVideo.style.display = 'none';
-            placeholder.style.display = 'flex';
+            // Stop all tracks in the stream
+            if (video.srcObject) {
+                const stream = video.srcObject;
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            
+            // Hide video and show placeholder
+            video.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+            
+            // Update status
+            statusDiv.innerHTML = '<p class="text-gray-400">Camera is off</p>';
         }
         
         // Function to go back to details
@@ -648,16 +801,14 @@
             document.getElementById('detailsSection').classList.add('hidden');
             document.getElementById('faceSection').classList.remove('hidden');
             
-            // Start camera with error handling
-            activateCamera().catch(error => {
-                console.error('Failed to start camera:', error);
-                verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-yellow-50 border-l-4 border-yellow-500 text-black';
-                verificationIcon.className = 'fas fa-exclamation-triangle text-yellow-500';
-                verificationMessage.textContent = 'Camera Not Available';
-                verificationDetails.textContent = 'Could not access camera. Please check permissions and try again.';
-                verificationDetails.className = 'text-black';
-                verificationStatus.classList.remove('hidden');
-            });
+            // Try to start camera automatically
+            const enableCameraBtn = document.getElementById('enableCameraBtn');
+            if (enableCameraBtn) {
+                // Trigger click on the enable camera button to request permission
+                setTimeout(() => {
+                    enableCameraBtn.click();
+                }, 300);
+            }
         }
 
                 

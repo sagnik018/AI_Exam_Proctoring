@@ -1,0 +1,19 @@
+# Core
+Flask==2.0.1
+Flask-Cors==3.0.10
+
+# Computer Vision (using pre-built wheels)
+opencv-python
+numpy==1.19.3
+dlib-binary==19.22.1
+face-recognition==1.3.0
+mediapipe==0.8.9.1
+Pillow==8.3.2
+
+# Audio
+pyaudio==0.2.11
+SpeechRecognition
+
+# Utilities
+python-dotenv
+gunicorn
