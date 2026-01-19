@@ -46,6 +46,8 @@ alert_system_enabled = True
 _frame_lock = threading.Lock()
 _latest_frame = None
 
+_current_exam_user = None
+
 _worker_started = False
 _stop_event = threading.Event()
 
@@ -179,15 +181,53 @@ def verify_face_quick_api():
     global _latest_frame
     if _latest_frame is None:
         return jsonify({"status": "error", "message": "No camera feed available"})
-    
+
+    store_snapshot = False
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+        store_snapshot = bool(data.get("store_snapshot"))
+
     verification_result = quick_face_verification(_latest_frame)
+
+    snapshot_path = None
+    if store_snapshot and verification_result.get('verified') and verification_result.get('name'):
+        try:
+            snapshots_dir = os.path.join(os.path.dirname(__file__), "snapshots")
+            os.makedirs(snapshots_dir, exist_ok=True)
+
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_name = secure_filename(str(verification_result.get('name')))
+            filename = f"pre_exam_{safe_name}_{ts}.jpg"
+            snapshot_path = os.path.join(snapshots_dir, filename)
+
+            ok = cv2.imwrite(snapshot_path, _latest_frame)
+            if ok:
+                conn = sqlite3.connect('proctoring.db')
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS pre_exam_identity (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        snapshot_path TEXT NOT NULL,
+                        verified_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                cursor.execute('''
+                    INSERT INTO pre_exam_identity (name, snapshot_path)
+                    VALUES (?, ?)
+                ''', (verification_result.get('name'), snapshot_path))
+                conn.commit()
+                conn.close()
+        except Exception as e:
+            log_event(f"Failed to store pre-exam snapshot: {str(e)}")
     
     if verification_result['verified']:
         log_event(f"Face verified: {verification_result.get('name', 'Unknown')}")
     
     return jsonify({
         "status": "success",
-        "verification": verification_result
+        "verification": verification_result,
+        "snapshot_path": snapshot_path
     })
 
 @app.route("/api/face_recognition/register", methods=["POST"])
@@ -685,7 +725,57 @@ def video_feed():
 # =====================
 @app.route("/start_exam", methods=["POST"])
 def start_exam():
-    global exam_running, suspicion_score, last_alert
+    global exam_running, suspicion_score, last_alert, _latest_frame, _current_exam_user
+
+    if _latest_frame is None:
+        return jsonify({"status": "error", "message": "No camera feed available"}), 400
+
+    # Require a previously stored pre-exam identity and verify the same user again on exam start
+    try:
+        conn = sqlite3.connect('proctoring.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS pre_exam_identity (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                snapshot_path TEXT NOT NULL,
+                verified_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cursor.execute('''
+            SELECT id, name, snapshot_path, verified_at
+            FROM pre_exam_identity
+            ORDER BY id DESC
+            LIMIT 1
+        ''')
+        row = cursor.fetchone()
+        conn.close()
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"DB error: {str(e)}"}), 500
+
+    if not row:
+        return jsonify({"status": "error", "message": "No pre-exam verification found. Please verify face first."}), 400
+
+    expected_name = row[1]
+    verification_result = quick_face_verification(_latest_frame)
+    if not verification_result.get('verified'):
+        return jsonify({
+            "status": "error",
+            "message": "Face verification failed at exam start",
+            "verification": verification_result
+        }), 403
+
+    actual_name = verification_result.get('name')
+    if expected_name and actual_name and expected_name != actual_name:
+        return jsonify({
+            "status": "error",
+            "message": "User mismatch. The person starting the exam is not the same as the verified user.",
+            "expected": expected_name,
+            "actual": actual_name
+        }), 403
+
+    _current_exam_user = actual_name
+
     exam_running = True
     suspicion_score = 0
     last_alert = ""
@@ -699,8 +789,9 @@ def start_exam():
 
 @app.route("/stop_exam")
 def stop_exam():
-    global exam_running
+    global exam_running, _current_exam_user
     exam_running = False
+    _current_exam_user = None
     clear_alert_queue()
     return jsonify({"status": "stopped"})
 
