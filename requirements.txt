@@ -6,6 +6,7 @@ Flask-Cors
 opencv-python
 numpy
 face-recognition
+dlib-binary==19.24.1
 mediapipe
 Pillow
 
