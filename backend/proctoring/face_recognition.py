@@ -41,6 +41,10 @@ class FaceRecognitionSystem:
     def register_face(self, face_image, name):
         """Register a new face for recognition"""
         try:
+            # Check if name already exists
+            if any(n.lower() == name.lower() for n in self.known_face_names):
+                return {'status': 'already_registered', 'message': f'User {name} is already registered.'}
+            
             # Convert to grayscale
             gray = cv2.cvtColor(face_image, cv2.COLOR_BGR2GRAY)
             
@@ -53,33 +57,31 @@ class FaceRecognitionSystem:
                 x, y, w, h = face
                 face_roi = gray[y:y+h, x:x+w]
                 
-                # Train the recognizer with the face
-                if len(self.known_face_encodings) == 0:
-                    # First face - train with label 0
-                    self.recognizer.train([face_roi], np.array([0]))
-                else:
-                    # Additional faces - train with all faces
-                    all_faces = self.known_face_encodings + [face_roi]
-                    all_labels = list(range(len(all_faces)))
-                    self.recognizer.train(all_faces, np.array(all_labels))
-                
-                # Save the trained model
+                # Save the face encoding
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"{name}_{timestamp}.pkl"
                 filepath = os.path.join(self.known_faces_dir, filename)
                 
                 with open(filepath, 'wb') as f:
-                    pickle.dump({'name': name, 'encoding': face_roi, 'label': len(self.known_face_names)}, f)
+                    pickle.dump({'name': name, 'encoding': face_roi}, f)
                 
                 # Reload known faces
                 self._load_known_faces()
                 
+                # Train the recognizer with all faces
+                if len(self.known_face_encodings) > 0:
+                    labels = list(range(len(self.known_face_encodings)))
+                    self.recognizer.train(self.known_face_encodings, np.array(labels))
+                
                 print(f"[FACE_RECOGNITION] Registered new face: {name}")
-                return True
+                return {'status': 'success', 'message': f'Successfully registered {name}'}
+            else:
+                return {'status': 'error', 'message': 'No face detected. Please ensure your face is clearly visible.'}
                 
         except Exception as e:
-            print(f"[FACE_RECOGNITION ERROR] {e}")
-            return False
+            error_msg = f'Registration error: {str(e)}'
+            print(f"[FACE_RECOGNITION ERROR] {error_msg}")
+            return {'status': 'error', 'message': error_msg}
     
     def quick_verification(self, frame, max_attempts=3):
         """Quick face verification before exam starts"""

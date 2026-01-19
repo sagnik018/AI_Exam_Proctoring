@@ -250,25 +250,21 @@ def register_face_api():
             })
         
         # Register the face from current frame
-        success = register_new_user(_latest_frame, name)
+        result = register_new_user(_latest_frame, name)
         
-        if success:
+        if result.get('status') == 'success':
             log_event(f"Face registered: {name}")
-            return jsonify({
-                "status": "success",
-                "message": f"Face registered successfully for {name}",
-                "name": name
-            })
-        else:
-            return jsonify({
-                "status": "error",
-                "message": "Face registration failed. Please ensure your face is clearly visible."
-            })
+        elif result.get('status') == 'already_registered':
+            log_event(f"Attempt to re-register existing face: {name}")
+        
+        return jsonify(result)
             
     except Exception as e:
+        error_msg = f"Registration error: {str(e)}"
+        print(f"[ERROR] {error_msg}")
         return jsonify({
             "status": "error", 
-            "message": f"Registration error: {str(e)}"
+            "message": error_msg
         })
 
 @app.route("/api/face_recognition/verify")
