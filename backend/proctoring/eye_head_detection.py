@@ -1,21 +1,29 @@
-import mediapipe as mp
 import cv2
 
-# MediaPipe Face Mesh
-mp_face = mp.solutions.face_mesh
-face_mesh = mp_face.FaceMesh(
-    static_image_mode=False,
-    max_num_faces=1,
-    refine_landmarks=True,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
-)
+# MediaPipe Face Mesh - with fallback for compatibility
+try:
+    import mediapipe as mp
+    mp_face = mp.solutions.face_mesh
+    face_mesh = mp_face.FaceMesh(
+        static_image_mode=False,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5
+    )
+except (ImportError, AttributeError) as e:
+    print(f"[WARNING] MediaPipe initialization failed: {e}")
+    print("[WARNING] Eye and head detection will be disabled")
+    mp_face = None
+    face_mesh = None
 
 def detect_head_movement(frame):
     """
     Detects abnormal head tilt and draws instructions on the frame.
     Returns True if suspicious head movement is detected.
     """
+    if face_mesh is None:
+        return False
 
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = face_mesh.process(rgb)

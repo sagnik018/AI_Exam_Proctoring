@@ -139,7 +139,9 @@ def home():
 # =====================
 @app.route("/exam")
 def exam():
-    return render_template("index.html")
+    # Auto-workflow: This serves the workflow entry point
+    # Users must complete: Personal Details → Face Verification → Start Exam
+    return render_template("details.html")
 
 # =====================
 # USER DETAILS
@@ -147,6 +149,13 @@ def exam():
 @app.route("/details")
 def user_details():
     return render_template("details.html")
+
+# =====================
+# EXAM START PAGE (After workflow completion)
+# =====================
+@app.route("/exam/start")
+def exam_start():
+    return render_template("index.html")
 
 @app.route("/submit_details", methods=["POST"])
 def submit_details():
