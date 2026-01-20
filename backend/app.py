@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, redirect, url_for
 from flask_cors import CORS
 import cv2
 import time
@@ -135,13 +135,19 @@ def home():
     return render_template("details.html")
 
 # =====================
-# MAIN EXAM PAGE (AFTER VERIFICATION)
+# MAIN EXAM ENTRY (REDIRECTS TO WORKFLOW)
 # =====================
 @app.route("/exam")
 def exam():
-    # Auto-workflow: This serves the workflow entry point
-    # Users must complete: Personal Details → Face Verification → Start Exam
-    return render_template("details.html")
+    """Entry point for exams.
+
+    Always redirect to the verification workflow (personal details page)
+    so that the user must go through:
+      1) Personal Details
+      2) Face Verification
+      3) Start Exam (at /exam/start)
+    """
+    return redirect(url_for("home"))
 
 # =====================
 # USER DETAILS
