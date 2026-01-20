@@ -623,18 +623,19 @@ def _detection_worker():
                     now = time.time()
                     if now - _last_event_time["head_movement"] >= event_cooldown_seconds["head_movement"]:
                         _last_event_time["head_movement"] = now
-                        add_suspicion_score(1)
-                        set_last_alert("Abnormal head movement")
-                        generate_alert(get_last_alert_message())
-                        log_event(get_last_alert_message())
-            except Exception as e:
-                logger.error(f"Head movement detection error in _detection_worker: {str(e)}", exc_info=True)
+                        suspicion_score += 1
+                        last_alert = "Abnormal head movement"
+                        generate_alert(last_alert)
+                        log_event(last_alert)
+            except Exception:
+                pass
 
         frame_index += 1
         time.sleep(0.001)
 
 
 def _audio_worker():
+    global suspicion_score, last_alert
     global _audio_suspicious, _audio_last_check_time
 
     event_cooldown_seconds = 10.0  # Increased from 6.0
@@ -642,30 +643,27 @@ def _audio_worker():
     audio_check_interval_seconds = 6.0
 
     while not _stop_event.is_set():
-        if not get_exam_running():
+        if not exam_running:
             _audio_suspicious = False
             time.sleep(0.2)
             continue
 
-        try:
-            now = time.time()
-            if now - _audio_last_check_time < audio_check_interval_seconds:
-                time.sleep(0.1)
-                continue
+        now = time.time()
+        if now - _audio_last_check_time < audio_check_interval_seconds:
+            time.sleep(0.1)
+            continue
 
-            _audio_last_check_time = now
-            detected = detect_background_voice()
-            _audio_suspicious = detected
-            if detected:
-                now = time.time()
-                if now - _last_event_time["background_voice"] >= event_cooldown_seconds:
-                    _last_event_time["background_voice"] = now
-                    add_suspicion_score(1)
-                    set_last_alert("Background voice detected")
-                    generate_alert(get_last_alert_message())
-                    log_event(get_last_alert_message())
-        except Exception as e:
-            logger.error(f"Audio detection error in _audio_worker: {str(e)}", exc_info=True)
+        _audio_last_check_time = now
+        detected = detect_background_voice()
+        _audio_suspicious = detected
+        if detected:
+            now = time.time()
+            if now - _last_event_time["background_voice"] >= event_cooldown_seconds:
+                _last_event_time["background_voice"] = now
+                suspicion_score += 1
+                last_alert = "Background voice detected"
+                generate_alert(last_alert)
+                log_event(last_alert)
 
 
 def generate_frames():
@@ -840,9 +838,9 @@ def start_exam():
 
     _current_exam_user = actual_name
 
-    set_exam_running(True)
-    set_suspicion_score(0)
-    set_last_alert("")
+    exam_running = True
+    suspicion_score = 0
+    last_alert = ""
     
     # Clear any existing alerts when starting exam
     clear_alert_queue()
@@ -853,8 +851,8 @@ def start_exam():
 
 @app.route("/stop_exam")
 def stop_exam():
-    global _current_exam_user
-    set_exam_running(False)
+    global exam_running, _current_exam_user
+    exam_running = False
     _current_exam_user = None
     clear_alert_queue()
     return jsonify({"status": "stopped"})
@@ -865,14 +863,16 @@ def stop_exam():
 # =====================
 @app.route("/tab_switched", methods=["POST"])
 def tab_switched():
-    if not get_exam_running():
+    global suspicion_score, last_alert
+
+    if not exam_running:
         return jsonify({"status": "ignored"})
 
     if detect_tab_switch():
-        add_suspicion_score(1)
-        set_last_alert("User switched browser tab")
-        generate_alert(get_last_alert_message())
-        log_event(get_last_alert_message())
+        suspicion_score += 1
+        last_alert = "User switched browser tab"
+        generate_alert(last_alert)
+        log_event(last_alert)
         return jsonify({"status": "logged"})
 
     return jsonify({"status": "ignored"})
@@ -883,12 +883,12 @@ def tab_switched():
 # =====================
 @app.route("/suspicion_score")
 def get_score():
-    return jsonify({"score": get_suspicion_score()})
+    return jsonify({"score": suspicion_score})
 
 
 @app.route("/latest_alert")
 def get_alert():
-    return jsonify({"message": get_last_alert_message()})
+    return jsonify(get_last_alert())
 
 
 # =====================

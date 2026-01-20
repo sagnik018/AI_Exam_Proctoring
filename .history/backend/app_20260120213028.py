@@ -31,67 +31,11 @@ from PIL import ImageGrab
 import datetime
 
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend"))
-BACKEND_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.abspath(os.path.join(BACKEND_DIR, "exam_logs.db"))
-
 app = Flask(__name__, template_folder=FRONTEND_DIR, static_folder=FRONTEND_DIR, static_url_path="")
 
 # =====================
-# INITIALIZE CORS
+# GLOBAL STATE
 # =====================
-CORS(app, resources={r"/api/*": {"origins": "*"}, r"/video_feed": {"origins": "*"}, 
-                     r"/start_exam": {"origins": "*"}, r"/stop_exam": {"origins": "*"},
-                     r"/submit_details": {"origins": "*"}, r"/tab_switched": {"origins": "*"},
-                     r"/suspicion_score": {"origins": "*"}, r"/latest_alert": {"origins": "*"}})
-logger.info("CORS enabled for all proctoring endpoints")
-
-# =====================
-# GLOBAL STATE (Thread-Safe)
-# =====================
-_state_lock = threading.Lock()
-_exam_running = False
-_suspicion_score = 0
-_last_alert = ""
-
-# Thread-safe getters and setters
-def set_exam_running(value):
-    global _exam_running
-    with _state_lock:
-        _exam_running = value
-        logger.info(f"Exam running state set to: {value}")
-
-def get_exam_running():
-    with _state_lock:
-        return _exam_running
-
-def add_suspicion_score(value):
-    global _suspicion_score
-    with _state_lock:
-        _suspicion_score += value
-        logger.debug(f"Suspicion score increased by {value}, total: {_suspicion_score}")
-        return _suspicion_score
-
-def get_suspicion_score():
-    with _state_lock:
-        return _suspicion_score
-
-def set_suspicion_score(value):
-    global _suspicion_score
-    with _state_lock:
-        _suspicion_score = value
-        logger.debug(f"Suspicion score set to: {value}")
-
-def get_last_alert_message():
-    with _state_lock:
-        return _last_alert
-
-def set_last_alert(message):
-    global _last_alert
-    with _state_lock:
-        _last_alert = message
-        logger.info(f"Alert set: {message}")
-
-# Legacy variable references (for backward compatibility)
 exam_running = False
 suspicion_score = 0
 last_alert = ""
@@ -163,7 +107,7 @@ def submit_details():
     
     # Store user details in database
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect('proctoring.db')
         cursor = conn.cursor()
         
         # Create table if not exists
@@ -533,6 +477,7 @@ def _capture_worker():
 
 
 def _detection_worker():
+    global suspicion_score, last_alert
     global _detected_face_count, _detected_head_suspicious
 
     event_cooldown_seconds = {
@@ -553,15 +498,10 @@ def _detection_worker():
     face_grace_seconds = 1.5
 
     while not _stop_event.is_set():
-        try:
-            if not get_exam_running():
-                _detected_face_count = 0
-                _detected_head_suspicious = False
-                time.sleep(0.05)
-                continue
-        except Exception as e:
-            logger.error(f"Error checking exam_running state in _detection_worker: {str(e)}", exc_info=True)
-            time.sleep(0.1)
+        if not exam_running:
+            _detected_face_count = 0
+            _detected_head_suspicious = False
+            time.sleep(0.05)
             continue
 
         with _frame_lock:
@@ -604,12 +544,12 @@ def _detection_worker():
                 if multiple_faces_streak >= face_streak_required:
                     if now - _last_event_time["multiple_faces"] >= event_cooldown_seconds["multiple_faces"]:
                         _last_event_time["multiple_faces"] = now
-                        add_suspicion_score(2)
-                        set_last_alert("Multiple faces detected")
-                        generate_alert(get_last_alert_message())
-                        log_event(get_last_alert_message())
-            except Exception as e:
-                logger.error(f"Face detection error in _detection_worker: {str(e)}", exc_info=True)
+                        suspicion_score += 2
+                        last_alert = "Multiple faces detected"
+                        generate_alert(last_alert)
+                        log_event(last_alert)
+            except Exception:
+                pass
 
             try:
                 head_suspicious = detect_head_movement(frame)
@@ -623,18 +563,19 @@ def _detection_worker():
                     now = time.time()
                     if now - _last_event_time["head_movement"] >= event_cooldown_seconds["head_movement"]:
                         _last_event_time["head_movement"] = now
-                        add_suspicion_score(1)
-                        set_last_alert("Abnormal head movement")
-                        generate_alert(get_last_alert_message())
-                        log_event(get_last_alert_message())
-            except Exception as e:
-                logger.error(f"Head movement detection error in _detection_worker: {str(e)}", exc_info=True)
+                        suspicion_score += 1
+                        last_alert = "Abnormal head movement"
+                        generate_alert(last_alert)
+                        log_event(last_alert)
+            except Exception:
+                pass
 
         frame_index += 1
         time.sleep(0.001)
 
 
 def _audio_worker():
+    global suspicion_score, last_alert
     global _audio_suspicious, _audio_last_check_time
 
     event_cooldown_seconds = 10.0  # Increased from 6.0
@@ -642,30 +583,27 @@ def _audio_worker():
     audio_check_interval_seconds = 6.0
 
     while not _stop_event.is_set():
-        if not get_exam_running():
+        if not exam_running:
             _audio_suspicious = False
             time.sleep(0.2)
             continue
 
-        try:
-            now = time.time()
-            if now - _audio_last_check_time < audio_check_interval_seconds:
-                time.sleep(0.1)
-                continue
+        now = time.time()
+        if now - _audio_last_check_time < audio_check_interval_seconds:
+            time.sleep(0.1)
+            continue
 
-            _audio_last_check_time = now
-            detected = detect_background_voice()
-            _audio_suspicious = detected
-            if detected:
-                now = time.time()
-                if now - _last_event_time["background_voice"] >= event_cooldown_seconds:
-                    _last_event_time["background_voice"] = now
-                    add_suspicion_score(1)
-                    set_last_alert("Background voice detected")
-                    generate_alert(get_last_alert_message())
-                    log_event(get_last_alert_message())
-        except Exception as e:
-            logger.error(f"Audio detection error in _audio_worker: {str(e)}", exc_info=True)
+        _audio_last_check_time = now
+        detected = detect_background_voice()
+        _audio_suspicious = detected
+        if detected:
+            now = time.time()
+            if now - _last_event_time["background_voice"] >= event_cooldown_seconds:
+                _last_event_time["background_voice"] = now
+                suspicion_score += 1
+                last_alert = "Background voice detected"
+                generate_alert(last_alert)
+                log_event(last_alert)
 
 
 def generate_frames():
@@ -840,9 +778,9 @@ def start_exam():
 
     _current_exam_user = actual_name
 
-    set_exam_running(True)
-    set_suspicion_score(0)
-    set_last_alert("")
+    exam_running = True
+    suspicion_score = 0
+    last_alert = ""
     
     # Clear any existing alerts when starting exam
     clear_alert_queue()
@@ -853,8 +791,8 @@ def start_exam():
 
 @app.route("/stop_exam")
 def stop_exam():
-    global _current_exam_user
-    set_exam_running(False)
+    global exam_running, _current_exam_user
+    exam_running = False
     _current_exam_user = None
     clear_alert_queue()
     return jsonify({"status": "stopped"})
@@ -865,14 +803,16 @@ def stop_exam():
 # =====================
 @app.route("/tab_switched", methods=["POST"])
 def tab_switched():
-    if not get_exam_running():
+    global suspicion_score, last_alert
+
+    if not exam_running:
         return jsonify({"status": "ignored"})
 
     if detect_tab_switch():
-        add_suspicion_score(1)
-        set_last_alert("User switched browser tab")
-        generate_alert(get_last_alert_message())
-        log_event(get_last_alert_message())
+        suspicion_score += 1
+        last_alert = "User switched browser tab"
+        generate_alert(last_alert)
+        log_event(last_alert)
         return jsonify({"status": "logged"})
 
     return jsonify({"status": "ignored"})
@@ -883,12 +823,12 @@ def tab_switched():
 # =====================
 @app.route("/suspicion_score")
 def get_score():
-    return jsonify({"score": get_suspicion_score()})
+    return jsonify({"score": suspicion_score})
 
 
 @app.route("/latest_alert")
 def get_alert():
-    return jsonify({"message": get_last_alert_message()})
+    return jsonify(get_last_alert())
 
 
 # =====================

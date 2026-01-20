@@ -144,69 +144,75 @@
             <!-- Step 1: Personal Details -->
             <section id="detailsSection" class="glass-morphism rounded-xl p-8">
                 <h2 class="text-2xl font-bold text-white mb-6">Step 1: Personal Details</h2>
-                <form id="detailsForm">
+                <form id="detailsForm" onsubmit="handleFormSubmit(event)">
                     <!-- Name Field -->
                     <div class="mb-6">
-                        <label for="name" class="block font-semibold mb-2">Full Name</label>
+                        <label for="name" class="block text-sm font-medium text-white mb-2">Full Name</label>
                         <input 
                             type="text" 
                             id="name" 
                             name="name" 
                             required
-                            class="form-input"
+                            class="w-full px-4 py-2 rounded-lg border-2 border-gray-300 bg-white bg-opacity-90 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Enter your full name"
                         >
                     </div>
 
                     <!-- Gender Field -->
                     <div class="mb-6">
-                        <label class="block font-semibold mb-2">Gender</label>
-                        <div class="grid grid-cols-2 gap-4">
-                            <label class="flex items-center p-3 rounded-lg border-2">
-                                <input type="radio" name="gender" value="male" required class="mr-3">
-                                <span>Male</span>
+                        <label class="block text-sm font-medium text-white mb-2">Gender</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center p-3 rounded-lg border-2 border-gray-300 bg-white bg-opacity-10 hover:bg-opacity-20 transition-all cursor-pointer">
+                                <input type="radio" name="gender" value="male" required class="h-4 w-4 text-blue-600">
+                                <span class="ml-2 text-white">Male</span>
                             </label>
-                            <label class="flex items-center p-3 rounded-lg border-2">
-                                <input type="radio" name="gender" value="female" required class="mr-3">
-                                <span>Female</span>
+                            <label class="flex items-center p-3 rounded-lg border-2 border-gray-300 bg-white bg-opacity-10 hover:bg-opacity-20 transition-all cursor-pointer">
+                                <input type="radio" name="gender" value="female" required class="h-4 w-4 text-blue-600">
+                                <span class="ml-2 text-white">Female</span>
                             </label>
                         </div>
-                        <div class="grid grid-cols-2 gap-4 mt-3">
-                            <label class="flex items-center p-3 rounded-lg border-2">
-                                <input type="radio" name="gender" value="other" required class="mr-3">
-                                <span>Other</span>
+                        <div class="grid grid-cols-2 gap-3 mt-3">
+                            <label class="flex items-center p-3 rounded-lg border-2 border-gray-300 bg-white bg-opacity-10 hover:bg-opacity-20 transition-all cursor-pointer">
+                                <input type="radio" name="gender" value="other" required class="h-4 w-4 text-blue-600">
+                                <span class="ml-2 text-white">Other</span>
                             </label>
-                            <label class="flex items-center p-3 rounded-lg border-2">
-                                <input type="radio" name="gender" value="prefer_not_to_say" required class="mr-3">
-                                <span>Prefer not to say</span>
+                            <label class="flex items-center p-3 rounded-lg border-2 border-gray-300 bg-white bg-opacity-10 hover:bg-opacity-20 transition-all cursor-pointer">
+                                <input type="radio" name="gender" value="prefer_not_to_say" required class="h-4 w-4 text-blue-600">
+                                <span class="ml-2 text-white">Prefer not to say</span>
                             </label>
                         </div>
                     </div>
 
                     <!-- Location Field -->
                     <div class="mb-6">
-                        <label for="location" class="block font-semibold mb-2">Location</label>
+                        <label for="location" class="block text-sm font-medium text-white mb-2">Location</label>
                         <input 
                             type="text" 
                             id="location" 
                             name="location" 
                             required
-                            class="form-input"
+                            class="w-full px-4 py-2 rounded-lg border-2 border-gray-300 bg-white bg-opacity-90 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Enter your location (city, country)"
                         >
                     </div>
 
                     <!-- Submit Button -->
-                    <div class="text-center">
+                    <div class="pt-4">
                         <button 
                             type="submit" 
                             id="nextBtn"
-                            class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center"
                         >
-                            <i class="fas fa-arrow-right mr-2"></i>Next - Face Verification
+                            <span>Next: Face Verification</span>
+                            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
                         </button>
-                        <div id="loadingSpinner" class="hidden mt-2">
-                            <i class="fas fa-spinner fa-spin text-blue-500"></i> Processing...
+                        <div id="loadingSpinner" class="hidden mt-3 text-center">
+                            <div class="inline-flex items-center">
+                                <i class="fas fa-spinner fa-spin text-blue-400 mr-2"></i>
+                                <span class="text-white">Processing...</span>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -374,39 +380,42 @@
         const verificationDetails = document.getElementById('verificationDetails');
         
         // Handle details form submission with auto-proceed
-        document.getElementById('detailsForm').addEventListener('submit', function(event) {
+        function handleFormSubmit(event) {
             event.preventDefault();
             
-            const formData = new FormData(this);
+            // Get form data
+            const formData = new FormData(event.target);
+            const name = formData.get('name')?.trim();
+            const gender = formData.get('gender');
+            const location = formData.get('location')?.trim();
+            
+            // Validate form
+            if (!name || !gender || !location) {
+                showAlert('error', 'Please fill in all required fields');
+                return;
+            }
+            
             const nextBtn = document.getElementById('nextBtn');
             const loadingSpinner = document.getElementById('loadingSpinner');
             
             nextBtn.disabled = true;
             loadingSpinner.classList.remove('hidden');
             
-            fetch('/submit_details', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Store user details in localStorage for later use
-                    localStorage.setItem('userName', formData.get('name') || '');
-                    moveToStep2();
-                } else {
-                    showAlert('error', data.message || 'Failed to submit details');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showAlert('error', 'An error occurred. Please try again.');
-            })
-            .finally(() => {
+            // Save to localStorage
+            localStorage.setItem('userDetails', JSON.stringify({
+                name: name,
+                gender: gender,
+                location: location
+            }));
+            
+            // Simulate API call (you can replace with actual API call)
+            setTimeout(() => {
+                showAlert('success', 'Details saved successfully!');
+                moveToStep2();
                 nextBtn.disabled = false;
                 loadingSpinner.classList.add('hidden');
-            });
-        });
+            }, 1000);
+        }
         
         // Show alert message
         function showAlert(type, message) {
@@ -437,6 +446,9 @@
         verifyBtn?.addEventListener('click', verifyFace);
         backBtn?.addEventListener('click', goBackToDetails);
         viewRulesBtn?.addEventListener('click', () => examRulesModal?.classList.remove('hidden'));
+        
+        // Form submission listener
+        document.getElementById('detailsForm')?.addEventListener('submit', handleFormSubmit);
         
         // Enable camera button
         const enableCameraBtn = document.getElementById('enableCameraBtn');
@@ -496,6 +508,7 @@
             verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-blue-50 border-l-4 border-blue-500';
             verificationIcon.className = 'fas fa-spinner fa-spin text-blue-500';
             verificationMessage.textContent = 'Verifying...';
+            verificationMessage.className = 'font-medium';
             verificationDetails.textContent = 'Please wait while we verify your identity';
             verificationStatus.classList.remove('hidden');
             
@@ -546,20 +559,24 @@
                 let data;
                 try {
                     data = await verifyResponse.json();
+                    console.log('Verification response:', data);
                 } catch (parseError) {
                     console.error('JSON parse error:', parseError);
                     throw new Error('Invalid response from server. Please try again.');
                 }
                 
+                // Handle different verification statuses
                 if (data.verification?.status === 'verified') {
                     // Success - verified
                     verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-green-50 border-l-4 border-green-500';
                     verificationIcon.className = 'fas fa-check-circle text-green-500';
                     verificationMessage.textContent = `Verified: ${data.verification.name || name}`;
+                    verificationMessage.className = 'font-medium text-black';
                     verificationDetails.textContent = 'Face verification successful. Proceeding to exam...';
                     
                     // Save user details
                     localStorage.setItem('userName', name);
+                    localStorage.setItem('faceRegistered', 'true');
                     
                     // Move to next step after a short delay
                     setTimeout(moveToStep3, 1500);
@@ -569,12 +586,13 @@
                 // If no registered faces or model not trained, try to register
                 if (data.verification?.status === 'no_registered_faces' || 
                     data.verification?.status === 'model_not_trained' ||
-                    data.verification?.status === 'face_not_recognized') {
+                    (data.verification?.verified === false && !data.verification?.status)) {
                     
                     verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-yellow-50 border-l-4 border-yellow-500';
-                    verificationIcon.className = 'fas fa-user-plus text-yellow-500';
+                    verificationIcon.className = 'fas fa-user-plus text-yellow-600';
                     verificationMessage.textContent = 'Registering New User';
-                    verificationDetails.textContent = `Registering ${name}...`;
+                    verificationMessage.className = 'font-medium text-yellow-800';
+                    verificationDetails.textContent = `Attempting to register ${name}...`;
                     
                     // Ensure we have a good face image before proceeding
                     if (data.verification?.face_detected === false) {
@@ -593,16 +611,19 @@
                     });
                     
                     const registerData = await registerResponse.json();
+                    console.log('Registration response:', registerData);
                     
                     if (registerData.status === 'success') {
-                        // Registration successful, verify again
+                        // Registration successful
                         verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-green-50 border-l-4 border-green-500';
                         verificationIcon.className = 'fas fa-check-circle text-green-500';
                         verificationMessage.textContent = 'Registration Successful';
-                        verificationDetails.textContent = 'Your face has been registered. Verifying...';
+                        verificationMessage.className = 'font-medium text-black';
+                        verificationDetails.textContent = `Successfully registered ${name}. Proceeding to exam...`;
                         
                         // Save user details
                         localStorage.setItem('userName', name);
+                        localStorage.setItem('faceRegistered', 'true');
                         
                         // Proceed to next step after a short delay
                         setTimeout(moveToStep3, 1500);
@@ -613,10 +634,12 @@
                         verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-green-50 border-l-4 border-green-500';
                         verificationIcon.className = 'fas fa-check-circle text-green-500';
                         verificationMessage.textContent = 'Already Registered';
-                        verificationDetails.textContent = 'Your face is already registered. Proceeding to exam...';
+                        verificationMessage.className = 'font-medium text-black';
+                        verificationDetails.textContent = `Welcome back, ${name}! Your face is already registered. Proceeding to exam...`;
                         
                         // Save user details
                         localStorage.setItem('userName', name);
+                        localStorage.setItem('faceRegistered', 'true');
                         
                         // Proceed to next step after a short delay
                         setTimeout(moveToStep3, 1500);
@@ -627,6 +650,11 @@
                     }
                 }
                 
+                // Handle face not recognized case
+                if (data.verification?.status === 'face_not_recognized') {
+                    throw new Error('Face not recognized. Please ensure you are in a well-lit area and your face is clearly visible.');
+                }
+                
                 // Handle other verification errors
                 const errorMsg = data.verification?.message || 'Verification failed. Please try again.';
                 throw new Error(errorMsg);
@@ -635,9 +663,10 @@
                 console.error('Verification error:', error);
                 
                 // Set error message with black text
-                verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-red-50 border-l-4 border-red-500 text-black';
+                verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-red-50 border-l-4 border-red-500';
                 verificationIcon.className = 'fas fa-exclamation-circle text-red-500';
                 verificationMessage.textContent = 'Verification Failed';
+                verificationMessage.className = 'font-medium text-black';
                 
                 // More specific error messages
                 let errorMessage = error.message || 'An error occurred during verification. Please try again.';
@@ -649,6 +678,7 @@
                     { pattern: /face.*not.*found|no.*face/i, message: 'No face detected. Please ensure your face is clearly visible in the camera.' },
                     { pattern: /poor.*lighting|lighting.*poor/i, message: 'Poor lighting detected. Please move to a well-lit area and try again.' },
                     { pattern: /multiple.*faces/i, message: 'Multiple faces detected. Please ensure only your face is visible in the camera.' },
+                    { pattern: /model.*not.*trained|no.*registered.*faces/i, message: 'Face recognition model not trained. Please register your face first.' },
                     { pattern: /server|internal/i, message: 'Server error. Please try again in a few moments.' }
                 ];
                 
@@ -659,6 +689,7 @@
                 }
                 
                 verificationDetails.textContent = errorMessage;
+                verificationDetails.className = 'text-black';
                 
                 // Add retry button for recoverable errors
                 const isRecoverable = !errorMessage.includes('server') && !errorMessage.includes('internet');
@@ -791,6 +822,7 @@
             // Turn off camera when going back
             deactivateCamera();
         }
+        
         function moveToStep2() {
             // Update progress indicators
             document.getElementById('step1').className = 'step-indicator step-completed rounded-full w-10 h-10 flex items-center justify-center font-bold';
@@ -804,13 +836,12 @@
             // Try to start camera automatically
             const enableCameraBtn = document.getElementById('enableCameraBtn');
             if (enableCameraBtn) {
-                // Trigger click on the enable camera button to request permission
+                // Trigger click on enable camera button to request permission
                 setTimeout(() => {
                     enableCameraBtn.click();
                 }, 300);
             }
         }
-
                 
         // Function to clear verification (for testing or re-verification)
         function clearVerification() {
@@ -831,6 +862,30 @@
         
         // Check verification status on load
         checkVerificationStatus();
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load saved form data if exists
+            const savedData = localStorage.getItem('userDetails');
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    document.getElementById('name').value = data.name || '';
+                    document.getElementById('location').value = data.location || '';
+                    if (data.gender) {
+                        const genderInput = document.querySelector(`input[name="gender"][value="${data.gender}"]`);
+                        if (genderInput) genderInput.checked = true;
+                    }
+                } catch (e) {
+                    console.error('Error loading saved data:', e);
+                }
+            }
+            
+            // Check if already verified
+            if (localStorage.getItem('faceVerified') === 'true') {
+                moveToStep3();
+            }
+        });
     </script>
 </body>
 </html>

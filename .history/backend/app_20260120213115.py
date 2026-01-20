@@ -883,12 +883,12 @@ def tab_switched():
 # =====================
 @app.route("/suspicion_score")
 def get_score():
-    return jsonify({"score": get_suspicion_score()})
+    return jsonify({"score": suspicion_score})
 
 
 @app.route("/latest_alert")
 def get_alert():
-    return jsonify({"message": get_last_alert_message()})
+    return jsonify(get_last_alert())
 
 
 # =====================

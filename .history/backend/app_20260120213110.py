@@ -865,14 +865,16 @@ def stop_exam():
 # =====================
 @app.route("/tab_switched", methods=["POST"])
 def tab_switched():
-    if not get_exam_running():
+    global suspicion_score, last_alert
+
+    if not exam_running:
         return jsonify({"status": "ignored"})
 
     if detect_tab_switch():
-        add_suspicion_score(1)
-        set_last_alert("User switched browser tab")
-        generate_alert(get_last_alert_message())
-        log_event(get_last_alert_message())
+        suspicion_score += 1
+        last_alert = "User switched browser tab"
+        generate_alert(last_alert)
+        log_event(last_alert)
         return jsonify({"status": "logged"})
 
     return jsonify({"status": "ignored"})
@@ -883,12 +885,12 @@ def tab_switched():
 # =====================
 @app.route("/suspicion_score")
 def get_score():
-    return jsonify({"score": get_suspicion_score()})
+    return jsonify({"score": suspicion_score})
 
 
 @app.route("/latest_alert")
 def get_alert():
-    return jsonify({"message": get_last_alert_message()})
+    return jsonify(get_last_alert())
 
 
 # =====================
