@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Details - AI Exam Proctoring</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/themes.css" rel="stylesheet" id="theme-css">
+    <style>
+        /* Prevent theme interference */
+        * {
+            transition: none !important;
+            animation: none !important;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .step-indicator {
+            transition: all 0.3s ease;
+        }
+        
+        .step-active {
+            background: #4A90E2;
+            color: white;
+        }
+        
+        .step-completed {
+            background: #10B981;
+            color: white;
+        }
+        
+        .step-inactive {
+            background: #6B7280;
+            color: white;
+        }
+        
+        /* Simple stable styles - NO BLINKING */
+        input[type="text"], .form-input {
+            color: #2C3E50;
+            background: #FFFFFF;
+            border: 2px solid #000000;
+            cursor: text;
+            caret-color: #2C3E50;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            outline: none;
+            box-shadow: none;
+            transition: none;
+            animation: none;
+            transform: none;
+            opacity: 1;
+            visibility: visible;
+            position: relative;
+            z-index: 1;
+        }
+        
+        input[type="text"]:focus, .form-input:focus {
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            outline: none;
+        }
+        
+        input[type="text"]:hover, .form-input:hover {
+            border-color: #2563EB;
+        }
+        
+        input[type="radio"] {
+            margin-right: 8px;
+        }
+        
+        input[type="radio"] + span {
+            color: #2C3E50;
+        }
+        
+        button {
+            cursor: pointer;
+            padding: 12px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .bg-blue-500 {
+            background-color: #3B82F6;
+            color: white;
+        }
+        
+        .bg-green-500 {
+            background-color: #10B981;
+            color: white;
+        }
+        
+        .bg-gray-500 {
+            background-color: #6B7280;
+            color: white;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">AI Exam Proctoring</h1>
+            <p class="text-gray-200 font-bold text-lg">Complete verification to start exam</p>
+        </header>
+
+        <!-- Progress Steps -->
+        <div class="max-w-4xl mx-auto mb-8">
+            <div class="flex justify-between items-center">
+                <div class="step-indicator step-active rounded-full w-10 h-10 flex items-center justify-center font-bold" id="step1">
+                    1
+                </div>
+                <div class="flex-1 h-1 bg-gray-300 mx-2" id="progress1"></div>
+                <div class="step-indicator step-inactive rounded-full w-10 h-10 flex items-center justify-center font-bold" id="step2">
+                    2
+                </div>
+                <div class="flex-1 h-1 bg-gray-300 mx-2" id="progress2"></div>
+                <div class="step-indicator step-inactive rounded-full w-10 h-10 flex items-center justify-center font-bold" id="step3">
+                    3
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="max-w-4xl mx-auto">
+            <!-- Step 1: Personal Details -->
+            <section id="detailsSection" class="glass-morphism rounded-xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-6">Step 1: Personal Details</h2>
+                <form id="detailsForm" onsubmit="handleFormSubmit(event)">
+                    <!-- Name Field -->
+                    <div class="mb-6">
+                        <label for="name" class="block text-sm font-medium text-white mb-2">Full Name</label>
+                        <input 
+                            type="text" 
+                            id="name" 
+                            name="name" 
+                            required
+                            class="w-full px-4 py-2 rounded-lg border-2 border-gray-300 bg-white bg-opacity-90 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Enter your full name"
+                        >
+                    </div>
+
+                    <!-- Gender Field -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-white mb-2">Gender</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center p-3 rounded-lg border-2 border-gray-300 bg-white bg-opacity-10 hover:bg-opacity-20 transition-all cursor-pointer">
+                                <input type="radio" name="gender" value="male" required class="h-4 w-4 text-blue-600">
+                                <span class="ml-2 text-white">Male</span>
+                            </label>
+                            <label class="flex items-center p-3 rounded-lg border-2 border-gray-300 bg-white bg-opacity-10 hover:bg-opacity-20 transition-all cursor-pointer">
+                                <input type="radio" name="gender" value="female" required class="h-4 w-4 text-blue-600">
+                                <span class="ml-2 text-white">Female</span>
+                            </label>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mt-3">
+                            <label class="flex items-center p-3 rounded-lg border-2 border-gray-300 bg-white bg-opacity-10 hover:bg-opacity-20 transition-all cursor-pointer">
+                                <input type="radio" name="gender" value="other" required class="h-4 w-4 text-blue-600">
+                                <span class="ml-2 text-white">Other</span>
+                            </label>
+                            <label class="flex items-center p-3 rounded-lg border-2 border-gray-300 bg-white bg-opacity-10 hover:bg-opacity-20 transition-all cursor-pointer">
+                                <input type="radio" name="gender" value="prefer_not_to_say" required class="h-4 w-4 text-blue-600">
+                                <span class="ml-2 text-white">Prefer not to say</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Location Field -->
+                    <div class="mb-6">
+                        <label for="location" class="block text-sm font-medium text-white mb-2">Location</label>
+                        <input 
+                            type="text" 
+                            id="location" 
+                            name="location" 
+                            required
+                            class="w-full px-4 py-2 rounded-lg border-2 border-gray-300 bg-white bg-opacity-90 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Enter your location (city, country)"
+                        >
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="pt-4">
+                        <button 
+                            type="submit" 
+                            id="nextBtn"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center"
+                        >
+                            <span>Next: Face Verification</span>
+                            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                        </button>
+                        <div id="loadingSpinner" class="hidden mt-3 text-center">
+                            <div class="inline-flex items-center">
+                                <i class="fas fa-spinner fa-spin text-blue-400 mr-2"></i>
+                                <span class="text-white">Processing...</span>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Step 2: Face Verification -->
+            <section id="faceSection" class="glass-morphism rounded-xl p-8 hidden">
+                <h2 class="text-2xl font-bold text-white mb-6">Step 2: Face Verification</h2>
+                
+                <div class="text-center mb-6">
+                    <div class="video-container bg-black bg-opacity-20 rounded-lg p-4 mb-4" id="videoContainer">
+                        <!-- Camera Feed -->
+                        <video id="video" width="640" height="480" autoplay playsinline muted class="mx-auto hidden"></video>
+                        
+                        <!-- Camera Placeholder -->
+                        <div id="cameraPlaceholder" class="flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg">
+                            <div class="bg-blue-100 p-4 rounded-full mb-4">
+                                <i class="fas fa-camera text-blue-600 text-2xl"></i>
+                            </div>
+                            <p class="text-white font-medium">Camera Access Required</p>
+                            <p class="text-gray-400 text-sm mt-1">We need access to your camera for face verification</p>
+                            <button id="enableCameraBtn" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center">
+                                <i class="fas fa-camera mr-2"></i>Enable Camera
+                            </button>
+                        </div>
+                        
+                        <!-- Camera Status -->
+                        <div id="cameraStatus" class="mt-2 text-sm text-gray-300">
+                            <p>Camera is off</p>
+                        </div>
+                        
+                        <canvas id="canvas" class="hidden"></canvas>
+                    </div>
+                    
+                    <!-- Verification Status -->
+                    <div id="verificationStatus" class="mb-4 p-4 rounded-md text-center hidden">
+                        <div class="flex items-center justify-center">
+                            <span id="verificationIcon" class="mr-2"></span>
+                            <span id="verificationMessage" class="font-medium"></span>
+                        </div>
+                        <div id="verificationDetails" class="mt-2 text-sm"></div>
+                    </div>
+                    
+                    <div class="flex justify-center space-x-4">
+                        <button 
+                            id="verifyBtn" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+                        >
+                            <i class="fas fa-user-check mr-2"></i>Verify Face
+                        </button>
+                        
+                        <button 
+                            id="backBtn" 
+                            class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+                        >
+                            <i class="fas fa-arrow-left mr-2"></i>Back to Details
+                        </button>
+                        
+                        <button 
+                            id="viewRulesBtn" 
+                            class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+                        >
+                            <i class="fas fa-scroll mr-2"></i>View Exam Rules
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <p class="text-gray-300 text-sm">
+                        <i class="fas fa-lightbulb mr-1"></i> Make sure your face is clearly visible in good lighting conditions.
+                    </p>
+                </div>
+            </section>
+            
+            <!-- Exam Rules Modal -->
+            <div id="examRulesModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+                <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Exam Rules & Guidelines</h2>
+                        <button id="closeRulesBtn" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4 text-gray-700">
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-blue-800 text-lg mb-2"><i class="fas fa-info-circle mr-2"></i>Before Starting:</h3>
+                            <ul class="list-disc pl-5 space-y-1">
+                                <li>Ensure you are in a well-lit, quiet room</li>
+                                <li>Keep your face clearly visible to the camera</li>
+                                <li>Close all other applications and browser tabs</li>
+                                <li>Have your ID ready if required</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-yellow-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-yellow-800 text-lg mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>During the Exam:</h3>
+                            <ul class="list-disc pl-5 space-y-1">
+                                <li>Keep your face visible to the camera at all times</li>
+                                <li>Do not use any unauthorized materials</li>
+                                <li>Do not communicate with others</li>
+                                <li>Do not navigate away from the exam page</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-red-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-red-800 text-lg mb-2"><i class="fas fa-ban mr-2"></i>Prohibited Actions:</h3>
+                            <ul class="list-disc pl-5 space-y-1">
+                                <li>Looking away from the screen for extended periods</li>
+                                <li>Having other people in the room</li>
+                                <li>Using phones, tablets, or other devices</li>
+                                <li>Taking screenshots or recording the exam</li>
+                            </ul>
+                        </div>
+
+                        <div class="mt-6 flex justify-end">
+                            <button id="understandBtn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition flex items-center">
+                                <i class="fas fa-check mr-2"></i>I Understand
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </section>
+
+            <!-- Step 3: Complete -->
+            <section id="completeSection" class="glass-morphism rounded-xl p-8 hidden">
+                <h2 class="text-2xl font-bold text-white mb-6">Step 3: Verification Complete</h2>
+                
+                <div class="text-center mb-6">
+                    <div class="mb-4">
+                        <svg class="w-16 h-16 mx-auto text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a2 2 0 002-2m-2 0a2 2 0 00-2 2m6 2a2 2 0 002-2m-2 0a2 2 0 00-2 2"></path>
+                        </svg>
+                    </div>
+                    <p class="text-white text-lg font-semibold mb-2">All verifications completed successfully!</p>
+                    <p class="text-gray-300">Your details have been saved and face has been verified.</p>
+                </div>
+
+                <div class="text-center">
+                    <button 
+                        onclick="proceedToMain()"
+                        class="bg-blue-500"
+                    >
+                        Start Exam →
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // DOM Elements
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const verifyBtn = document.getElementById('verifyBtn');
+        const backBtn = document.getElementById('backBtn');
+        const viewRulesBtn = document.getElementById('viewRulesBtn');
+        const closeRulesBtn = document.getElementById('closeRulesBtn');
+        const understandBtn = document.getElementById('understandBtn');
+        const examRulesModal = document.getElementById('examRulesModal');
+        const verificationStatus = document.getElementById('verificationStatus');
+        const verificationMessage = document.getElementById('verificationMessage');
+        const verificationIcon = document.getElementById('verificationIcon');
+        const verificationDetails = document.getElementById('verificationDetails');
+        
+        // Handle details form submission with auto-proceed
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            console.log('Form submitted');
+            
+            // Get form data
+            const formData = new FormData(event.target);
+            const name = formData.get('name')?.trim();
+            const gender = formData.get('gender');
+            const location = formData.get('location')?.trim();
+            
+            // Validate form
+            if (!name || !gender || !location) {
+                showAlert('error', 'Please fill in all required fields');
+                return;
+            }
+            
+            const nextBtn = document.getElementById('nextBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            nextBtn.disabled = true;
+            loadingSpinner.classList.remove('hidden');
+            
+            // Save to localStorage
+            localStorage.setItem('userDetails', JSON.stringify({
+                name: name,
+                gender: gender,
+                location: location
+            }));
+            
+            // Submit to backend
+            fetch('/submit_details', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: name,
+                    gender: gender,
+                    location: location
+                })
+            })
+            .then(response => {
+                console.log('Submit response:', response);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Submit data:', data);
+                if (data.status === 'success') {
+                    showAlert('success', 'Details saved successfully! Moving to face verification...');
+                    // Move to step 2 after a short delay
+                    setTimeout(() => {
+                        moveToStep2();
+                        nextBtn.disabled = false;
+                        loadingSpinner.classList.add('hidden');
+                    }, 1500);
+                } else {
+                    throw new Error(data.message || 'Failed to save details');
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting form:', error);
+                showAlert('error', 'Failed to save details: ' + error.message);
+                nextBtn.disabled = false;
+                loadingSpinner.classList.add('hidden');
+            });
+        }
+        
+        // Show alert message
+        function showAlert(type, message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg ${
+                type === 'error' ? 'bg-red-100 border-l-4 border-red-500 text-red-700' : 
+                type === 'success' ? 'bg-green-100 border-l-4 border-green-500 text-green-700' :
+                'bg-blue-100 border-l-4 border-blue-500 text-blue-700'
+            }`;
+            
+            alertDiv.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${
+                        type === 'error' ? 'fa-exclamation-circle' : 
+                        type === 'success' ? 'fa-check-circle' : 'fa-info-circle'
+                    } mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+        
+        // Event Listeners
+        verifyBtn?.addEventListener('click', verifyFace);
+        backBtn?.addEventListener('click', goBackToDetails);
+        viewRulesBtn?.addEventListener('click', () => examRulesModal?.classList.remove('hidden'));
+        
+        // Form submission listener
+        document.getElementById('detailsForm')?.addEventListener('submit', handleFormSubmit);
+        
+        // Enable camera button
+        const enableCameraBtn = document.getElementById('enableCameraBtn');
+        if (enableCameraBtn) {
+            enableCameraBtn.addEventListener('click', () => {
+                enableCameraBtn.disabled = true;
+                enableCameraBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Enabling...';
+                
+                activateCamera()
+                    .then(() => {
+                        enableCameraBtn.classList.add('hidden');
+                    })
+                    .catch(error => {
+                        console.error('Failed to enable camera:', error);
+                        enableCameraBtn.disabled = false;
+                        enableCameraBtn.innerHTML = '<i class="fas fa-camera mr-2"></i>Try Again';
+                    });
+            });
+        }
+        closeRulesBtn?.addEventListener('click', () => examRulesModal?.classList.add('hidden'));
+        understandBtn?.addEventListener('click', () => examRulesModal?.classList.add('hidden'));
+        
+        // Close modal when clicking outside
+        examRulesModal?.addEventListener('click', (e) => {
+            if (e.target === examRulesModal) {
+                examRulesModal.classList.add('hidden');
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                examRulesModal?.classList.add('hidden');
+            }
+        });
+        
+        // Show exam rules on first visit
+        document.addEventListener('DOMContentLoaded', () => {
+            const hasSeenRules = localStorage.getItem('hasSeenRules');
+            if (!hasSeenRules && examRulesModal) {
+                setTimeout(() => {
+                    examRulesModal.classList.remove('hidden');
+                    localStorage.setItem('hasSeenRules', 'true');
+                }, 1000);
+            }
+        });
+        
+        // Face verification function
+        async function verifyFace() {
+            const verificationStatus = document.getElementById('verificationStatus');
+            const verificationIcon = document.getElementById('verificationIcon');
+            const verificationMessage = document.getElementById('verificationMessage');
+            const verificationDetails = document.getElementById('verificationDetails');
+            const verifyBtn = document.getElementById('verifyBtn');
+            
+            // Show verifying status
+            verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-blue-50 border-l-4 border-blue-500';
+            verificationIcon.className = 'fas fa-spinner fa-spin text-blue-500';
+            verificationMessage.textContent = 'Verifying...';
+            verificationMessage.className = 'font-medium';
+            verificationDetails.textContent = 'Please wait while we verify your identity';
+            verificationStatus.classList.remove('hidden');
+            
+            // Disable verify button during verification
+            verifyBtn.disabled = true;
+            verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Verifying...';
+            
+            try {
+                // First, ensure the camera is active
+                if (!video.srcObject || !video.srcObject.active) {
+                    try {
+                        await activateCamera();
+                    } catch (cameraError) {
+                        throw new Error('Camera initialization failed. Please check camera permissions and try again.');
+                    }
+                }
+                
+                // Get user's name from the form or local storage
+                const name = document.getElementById('name')?.value?.trim();
+                if (!name) {
+                    throw new Error('Name is required. Please go back and enter your name.');
+                }
+                
+                // Update status to show we're capturing the frame
+                verificationDetails.textContent = 'Capturing your image...';
+                
+                // First try to verify the user
+                let verifyResponse;
+                try {
+                    verifyResponse = await fetch('/api/face_recognition/verify_quick', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            store_snapshot: true,
+                            name: name
+                        })
+                    });
+                    
+                    if (!verifyResponse.ok) {
+                        const errorData = await verifyResponse.json().catch(() => ({}));
+                        throw new Error(errorData.message || 'Server error during verification');
+                    }
+                } catch (fetchError) {
+                    console.error('Fetch error:', fetchError);
+                    throw new Error('Connection error. Please check your internet connection and try again.');
+                }
+
+                let data;
+                try {
+                    data = await verifyResponse.json();
+                    console.log('Verification response:', data);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    throw new Error('Invalid response from server. Please try again.');
+                }
+                
+                // Handle different verification statuses
+                if (data.verification?.status === 'verified') {
+                    // Success - verified
+                    verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-green-50 border-l-4 border-green-500';
+                    verificationIcon.className = 'fas fa-check-circle text-green-500';
+                    verificationMessage.textContent = `Verified: ${data.verification.name || name}`;
+                    verificationMessage.className = 'font-medium text-black';
+                    verificationDetails.textContent = 'Face verification successful. Proceeding to exam...';
+                    
+                    // Save user details
+                    localStorage.setItem('userName', name);
+                    localStorage.setItem('faceRegistered', 'true');
+                    
+                    // Move to next step after a short delay
+                    setTimeout(moveToStep3, 1500);
+                    return;
+                }
+                
+                // If no registered faces or model not trained, try to register
+                if (data.verification?.status === 'no_registered_faces' || 
+                    data.verification?.status === 'model_not_trained' ||
+                    (data.verification?.verified === false && !data.verification?.status)) {
+                    
+                    verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-yellow-50 border-l-4 border-yellow-500';
+                    verificationIcon.className = 'fas fa-user-plus text-yellow-600';
+                    verificationMessage.textContent = 'Registering New User';
+                    verificationMessage.className = 'font-medium text-yellow-800';
+                    verificationDetails.textContent = `Attempting to register ${name}...`;
+                    
+                    // Ensure we have a good face image before proceeding
+                    if (data.verification?.face_detected === false) {
+                        throw new Error('No face detected. Please ensure your face is clearly visible in the camera.');
+                    }
+                    
+                    if (data.verification?.image_quality === 'poor') {
+                        throw new Error('Image quality is poor. Please ensure good lighting and try again.');
+                    }
+                    
+                    // Register the user
+                    const registerResponse = await fetch('/api/face_recognition/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name })
+                    });
+                    
+                    const registerData = await registerResponse.json();
+                    console.log('Registration response:', registerData);
+                    
+                    if (registerData.status === 'success') {
+                        // Registration successful
+                        verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-green-50 border-l-4 border-green-500';
+                        verificationIcon.className = 'fas fa-check-circle text-green-500';
+                        verificationMessage.textContent = 'Registration Successful';
+                        verificationMessage.className = 'font-medium text-black';
+                        verificationDetails.textContent = `Successfully registered ${name}. Proceeding to exam...`;
+                        
+                        // Save user details
+                        localStorage.setItem('userName', name);
+                        localStorage.setItem('faceRegistered', 'true');
+                        
+                        // Proceed to next step after a short delay
+                        setTimeout(moveToStep3, 1500);
+                        return;
+                    } 
+                    else if (registerData.status === 'already_registered') {
+                        // User already exists, proceed to exam
+                        verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-green-50 border-l-4 border-green-500';
+                        verificationIcon.className = 'fas fa-check-circle text-green-500';
+                        verificationMessage.textContent = 'Already Registered';
+                        verificationMessage.className = 'font-medium text-black';
+                        verificationDetails.textContent = `Welcome back, ${name}! Your face is already registered. Proceeding to exam...`;
+                        
+                        // Save user details
+                        localStorage.setItem('userName', name);
+                        localStorage.setItem('faceRegistered', 'true');
+                        
+                        // Proceed to next step after a short delay
+                        setTimeout(moveToStep3, 1500);
+                        return;
+                    } 
+                    else {
+                        throw new Error(registerData.message || 'Registration failed. Please try again.');
+                    }
+                }
+                
+                // Handle face not recognized case
+                if (data.verification?.status === 'face_not_recognized') {
+                    throw new Error('Face not recognized. Please ensure you are in a well-lit area and your face is clearly visible.');
+                }
+                
+                // Handle other verification errors
+                const errorMsg = data.verification?.message || 'Verification failed. Please try again.';
+                throw new Error(errorMsg);
+                
+            } catch (error) {
+                console.error('Verification error:', error);
+                
+                // Set error message with black text
+                verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-red-50 border-l-4 border-red-500';
+                verificationIcon.className = 'fas fa-exclamation-circle text-red-500';
+                verificationMessage.textContent = 'Verification Failed';
+                verificationMessage.className = 'font-medium text-black';
+                
+                // More specific error messages
+                let errorMessage = error.message || 'An error occurred during verification. Please try again.';
+                
+                // Common error patterns and their user-friendly messages
+                const errorPatterns = [
+                    { pattern: /camera|permission/i, message: 'Camera access denied. Please allow camera permissions and try again.' },
+                    { pattern: /network|internet|fetch/i, message: 'Network error. Please check your internet connection and try again.' },
+                    { pattern: /face.*not.*found|no.*face/i, message: 'No face detected. Please ensure your face is clearly visible in the camera.' },
+                    { pattern: /poor.*lighting|lighting.*poor/i, message: 'Poor lighting detected. Please move to a well-lit area and try again.' },
+                    { pattern: /multiple.*faces/i, message: 'Multiple faces detected. Please ensure only your face is visible in the camera.' },
+                    { pattern: /model.*not.*trained|no.*registered.*faces/i, message: 'Face recognition model not trained. Please register your face first.' },
+                    { pattern: /server|internal/i, message: 'Server error. Please try again in a few moments.' }
+                ];
+                
+                // Find a matching error pattern
+                const matchedPattern = errorPatterns.find(pattern => pattern.pattern.test(errorMessage));
+                if (matchedPattern) {
+                    errorMessage = matchedPattern.message;
+                }
+                
+                verificationDetails.textContent = errorMessage;
+                verificationDetails.className = 'text-black';
+                
+                // Add retry button for recoverable errors
+                const isRecoverable = !errorMessage.includes('server') && !errorMessage.includes('internet');
+                if (isRecoverable) {
+                    const retryBtn = document.createElement('button');
+                    retryBtn.className = 'mt-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-4 rounded';
+                    retryBtn.innerHTML = '<i class=\'fas fa-sync-alt mr-2\'></i>Try Again';
+                    retryBtn.onclick = () => {
+                        verifyFace().catch(console.error);
+                    };
+                    verificationDetails.appendChild(document.createElement('br'));
+                    verificationDetails.appendChild(retryBtn);
+                }
+                
+                // Show error alert with the same message
+                showAlert('error', errorMessage);
+            } finally {
+                // Re-enable verify button
+                const verifyBtn = document.getElementById('verifyBtn');
+                if (verifyBtn) {
+                    verifyBtn.disabled = false;
+                    verifyBtn.innerHTML = '<i class="fas fa-user-check mr-2"></i>Verify Face';
+                }
+            }
+        
+        // Function to move to step 3
+        function moveToStep3() {
+            // Update progress indicators
+            document.getElementById('step2').className = 'step-indicator step-completed rounded-full w-10 h-10 flex items-center justify-center font-bold';
+            document.getElementById('step3').className = 'step-indicator step-active rounded-full w-10 h-10 flex items-center justify-center font-bold';
+            document.getElementById('progress2').className = 'flex-1 h-1 bg-green-500 mx-2';
+            
+            // Show complete section
+            document.getElementById('faceSection').classList.add('hidden');
+            document.getElementById('completeSection').classList.remove('hidden');
+            
+            // Automatically proceed to main exam after 2 seconds
+            console.log('All verifications completed! Redirecting to exam in 2 seconds...');
+            setTimeout(() => {
+                // Mark verification as complete
+                localStorage.setItem('userDetailsProvided', 'true');
+                localStorage.setItem('faceVerified', 'true');
+                
+                // Redirect to main exam page
+                window.location.href = '/exam';
+            }, 2000);
+        }
+        
+        // Function to activate camera
+        async function activateCamera() {
+            const video = document.getElementById('video');
+            const placeholder = document.getElementById('cameraPlaceholder');
+            const statusDiv = document.getElementById('cameraStatus');
+            const enableCameraBtn = document.getElementById('enableCameraBtn');
+            
+            // Update status
+            statusDiv.innerHTML = '<p class="text-yellow-400">Requesting camera access...</p>';
+            
+            try {
+                // Request camera access
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'  // Use front camera
+                    },
+                    audio: false
+                });
+                
+                // Show video element and hide placeholder
+                video.srcObject = stream;
+                video.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                
+                // Update status
+                statusDiv.innerHTML = '<p class="text-green-400">Camera is active</p>';
+                
+                // Return the stream so it can be stopped later
+                return stream;
+                
+            } catch (error) {
+                console.error('Camera access error:', error);
+                
+                // Update status with error
+                statusDiv.innerHTML = `
+                    <p class="text-red-400">Camera access denied</p>
+                    <p class="text-gray-400 text-xs mt-1">${error.message || 'Please check your camera permissions'}</p>
+                `;
+                
+                // Show enable button
+                enableCameraBtn.classList.remove('hidden');
+                
+                throw error;
+            }
+        }
+        
+        // Function to deactivate camera
+        function deactivateCamera() {
+            const video = document.getElementById('video');
+            const placeholder = document.getElementById('cameraPlaceholder');
+            const statusDiv = document.getElementById('cameraStatus');
+            
+            // Stop all tracks in the stream
+            if (video.srcObject) {
+                const stream = video.srcObject;
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            
+            // Hide video and show placeholder
+            video.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+            
+            // Update status
+            statusDiv.innerHTML = '<p class="text-gray-400">Camera is off</p>';
+        }
+        
+        // Function to go back to details
+        function goBackToDetails() {
+            // Update progress indicators
+            document.getElementById('step1').className = 'step-indicator step-active rounded-full w-10 h-10 flex items-center justify-center font-bold';
+            document.getElementById('step2').className = 'step-indicator step-inactive rounded-full w-10 h-10 flex items-center justify-center font-bold';
+            document.getElementById('progress1').className = 'flex-1 h-1 bg-gray-300 mx-2';
+            
+            // Show details section
+            document.getElementById('faceSection').classList.add('hidden');
+            document.getElementById('detailsSection').classList.remove('hidden');
+            
+            // Turn off camera when going back
+            deactivateCamera();
+        }
+        
+        function moveToStep2() {
+            // Update progress indicators
+            document.getElementById('step1').className = 'step-indicator step-completed rounded-full w-10 h-10 flex items-center justify-center font-bold';
+            document.getElementById('step2').className = 'step-indicator step-active rounded-full w-10 h-10 flex items-center justify-center font-bold';
+            document.getElementById('progress1').className = 'flex-1 h-1 bg-green-500 mx-2';
+            
+            // Show face verification section
+            document.getElementById('detailsSection').classList.add('hidden');
+            document.getElementById('faceSection').classList.remove('hidden');
+            
+            // Try to start camera automatically
+            const enableCameraBtn = document.getElementById('enableCameraBtn');
+            if (enableCameraBtn) {
+                // Trigger click on enable camera button to request permission
+                setTimeout(() => {
+                    enableCameraBtn.click();
+                }, 300);
+            }
+        }
+                
+        // Function to clear verification (for testing or re-verification)
+        function clearVerification() {
+            localStorage.removeItem('userDetailsProvided');
+            localStorage.removeItem('faceVerified');
+        }
+        
+        // Check if verification needs to be reset
+        function checkVerificationStatus() {
+            const userDetailsProvided = localStorage.getItem('userDetailsProvided');
+            const faceVerified = localStorage.getItem('faceVerified');
+            
+            // If either verification is missing, reset to step 1
+            if (!userDetailsProvided || !faceVerified) {
+                clearVerification();
+            }
+        }
+        
+        // Check verification status on load
+        checkVerificationStatus();
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load saved form data if exists
+            const savedData = localStorage.getItem('userDetails');
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    document.getElementById('name').value = data.name || '';
+                    document.getElementById('location').value = data.location || '';
+                    if (data.gender) {
+                        const genderInput = document.querySelector(`input[name="gender"][value="${data.gender}"]`);
+                        if (genderInput) genderInput.checked = true;
+                    }
+                } catch (e) {
+                    console.error('Error loading saved data:', e);
+                }
+            }
+            
+            // Check if already verified
+            if (localStorage.getItem('faceVerified') === 'true') {
+                moveToStep3();
+            }
+        });
+    </script>
+</body>
+</html>

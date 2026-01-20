@@ -363,9 +363,9 @@
                 <div class="text-center">
                     <button 
                         onclick="proceedToMain()"
-                        class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg transition duration-200 flex items-center justify-center mx-auto"
+                        class="bg-blue-500"
                     >
-                        <i class="fas fa-play mr-2"></i>Start Exam →
+                        Start Exam →
                     </button>
                 </div>
             </section>
@@ -480,12 +480,7 @@
             localStorage.setItem('faceVerified', 'true');
             
             setTimeout(() => {
-                // Show completion section before redirecting
-                document.getElementById('completeSection').classList.remove('hidden');
-            }, 300);
-            
-            setTimeout(() => {
-                window.location.href = '/exam/start';
+                window.location.href = '/exam';
             }, 2000);
         }
 
@@ -497,11 +492,6 @@
             document.getElementById('faceSection').classList.add('hidden');
             document.getElementById('detailsSection').classList.remove('hidden');
             deactivateCamera();
-        }
-
-        function proceedToMain() {
-            console.log('=== PROCEEDING TO EXAM ===');
-            window.location.href = '/exam/start';
         }
 
         // ====================================
