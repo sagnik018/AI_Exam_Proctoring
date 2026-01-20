@@ -255,16 +255,55 @@ def screen_recording_status():
 # =====================
 @app.route("/api/face_recognition/verify_quick", methods=["POST"])
 def verify_face_quick_api():
-    global _latest_frame
-    if _latest_frame is None:
-        return jsonify({"status": "error", "message": "No camera feed available"})
+    """Pre-exam quick face verification endpoint.
 
+    Uses the latest streaming frame when available, otherwise captures
+    a fresh frame directly from the camera so verification does not fail
+    with "No camera feed available" when /video_feed is not active.
+    """
+    global _latest_frame
+
+    # Determine which frame to use for verification
+    frame_to_use = None
+
+    if _latest_frame is not None:
+        # Use the most recent frame from the streaming worker
+        frame_to_use = _latest_frame.copy()
+    else:
+        # Fallback: capture a single frame directly from the default camera
+        try:
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                return jsonify({
+                    "status": "error",
+                    "message": "Unable to access camera for verification"
+                })
+
+            ret, frame = cap.read()
+            cap.release()
+
+            if not ret or frame is None:
+                return jsonify({
+                    "status": "error",
+                    "message": "Failed to capture image from camera"
+                })
+
+            frame_to_use = frame
+        except Exception as e:
+            log_event(f"Camera capture error during quick verification: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "message": "Camera error during verification. Please try again."
+            })
+
+    # Read optional flags from request body
     store_snapshot = False
     if request.is_json:
         data = request.get_json(silent=True) or {}
         store_snapshot = bool(data.get("store_snapshot"))
 
-    verification_result = quick_face_verification(_latest_frame)
+    # Run quick verification on the selected frame
+    verification_result = quick_face_verification(frame_to_use)
 
     snapshot_path = None
     if store_snapshot and verification_result.get('verified') and verification_result.get('name'):
@@ -277,7 +316,7 @@ def verify_face_quick_api():
             filename = f"pre_exam_{safe_name}_{ts}.jpg"
             snapshot_path = os.path.join(snapshots_dir, filename)
 
-            ok = cv2.imwrite(snapshot_path, _latest_frame)
+            ok = cv2.imwrite(snapshot_path, frame_to_use)
             if ok:
                 conn = sqlite3.connect('proctoring.db')
                 cursor = conn.cursor()
@@ -297,10 +336,10 @@ def verify_face_quick_api():
                 conn.close()
         except Exception as e:
             log_event(f"Failed to store pre-exam snapshot: {str(e)}")
-    
-    if verification_result['verified']:
+
+    if verification_result.get('verified'):
         log_event(f"Face verified: {verification_result.get('name', 'Unknown')}")
-    
+
     return jsonify({
         "status": "success",
         "verification": verification_result,
