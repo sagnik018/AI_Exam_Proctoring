@@ -358,15 +358,42 @@ def register_face_api():
                 "status": "error", 
                 "message": "Name is required for registration"
             })
+
+        # Choose a frame for registration: use latest worker frame if present,
+        # otherwise capture a fresh frame from the default camera.
+        frame_to_use = None
+
+        if _latest_frame is not None:
+            frame_to_use = _latest_frame.copy()
+        else:
+            try:
+                cap = cv2.VideoCapture(0)
+                if not cap.isOpened():
+                    return jsonify({
+                        "status": "error",
+                        "message": "Unable to access camera for registration"
+                    })
+
+                ret, frame = cap.read()
+                cap.release()
+
+                if not ret or frame is None:
+                    return jsonify({
+                        "status": "error",
+                        "message": "Failed to capture image from camera for registration"
+                    })
+
+                frame_to_use = frame
+            except Exception as e:
+                error_msg = f"Camera error during registration: {str(e)}"
+                log_event(error_msg)
+                return jsonify({
+                    "status": "error",
+                    "message": "Camera error during registration. Please try again."
+                })
         
-        if _latest_frame is None:
-            return jsonify({
-                "status": "error", 
-                "message": "No camera feed available for registration"
-            })
-        
-        # Register the face from current frame
-        result = register_new_user(_latest_frame, name)
+        # Register the face from the selected frame
+        result = register_new_user(frame_to_use, name)
         
         if result.get('status') == 'success':
             log_event(f"Face registered: {name}")
