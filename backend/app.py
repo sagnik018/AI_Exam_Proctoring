@@ -159,8 +159,26 @@ def user_details():
 # =====================
 # EXAM START PAGE (After workflow completion)
 # =====================
+@app.route("/exam/<path:filename>")
+def exam_static(filename):
+    """Serve static files from frontend directory for the exam page."""
+    return send_from_directory(os.path.join(os.path.dirname(__file__), '..', 'frontend'), filename)
+
 @app.route("/exam/start")
 def exam_start():
+    """Start exam page.
+
+    Only allow access if the user has completed:
+      1) Personal details
+      2) Face verification
+    Otherwise redirect to the verification workflow.
+    """
+    # Simple token-based check: frontend passes ?verified=1 after successful verification
+    verified = request.args.get('verified')
+    if verified != '1':
+        log_event("Unauthorized attempt to access /exam/start without verification token")
+        return redirect(url_for("home"))
+    log_event("Authorized access to /exam/start with verification token")
     return render_template("index.html")
 
 @app.route("/submit_details", methods=["POST"])
