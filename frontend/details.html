@@ -164,21 +164,21 @@
                         <div class="grid grid-cols-2 gap-3">
                             <label class="flex items-center p-3 rounded-lg border-2 border-gray-300 bg-white bg-opacity-10 hover:bg-opacity-20 transition-all cursor-pointer">
                                 <input type="radio" name="gender" value="male" required class="h-4 w-4 text-blue-600">
-                                <span class="ml-2 text-white">Male</span>
+                                <span class="ml-2 dark:text-black text-gray-800">Male</span>
                             </label>
                             <label class="flex items-center p-3 rounded-lg border-2 border-gray-300 bg-white bg-opacity-10 hover:bg-opacity-20 transition-all cursor-pointer">
                                 <input type="radio" name="gender" value="female" required class="h-4 w-4 text-blue-600">
-                                <span class="ml-2 text-white">Female</span>
+                                <span class="ml-2 dark:text-black text-gray-800">Female</span>
                             </label>
                         </div>
                         <div class="grid grid-cols-2 gap-3 mt-3">
                             <label class="flex items-center p-3 rounded-lg border-2 border-gray-300 bg-white bg-opacity-10 hover:bg-opacity-20 transition-all cursor-pointer">
                                 <input type="radio" name="gender" value="other" required class="h-4 w-4 text-blue-600">
-                                <span class="ml-2 text-white">Other</span>
+                                <span class="ml-2 dark:text-black text-gray-800">Other</span>
                             </label>
                             <label class="flex items-center p-3 rounded-lg border-2 border-gray-300 bg-white bg-opacity-10 hover:bg-opacity-20 transition-all cursor-pointer">
                                 <input type="radio" name="gender" value="prefer_not_to_say" required class="h-4 w-4 text-blue-600">
-                                <span class="ml-2 text-white">Prefer not to say</span>
+                                <span class="ml-2 dark:text-black text-gray-800">Prefer not to say</span>
                             </label>
                         </div>
                     </div>
@@ -248,12 +248,12 @@
                     </div>
                     
                     <!-- Verification Status -->
-                    <div id="verificationStatus" class="mb-4 p-4 rounded-lg border border-gray-300 bg-white text-black hidden">
+                    <div id="verificationStatus" class="mb-4 p-4 rounded-lg border border-gray-300 bg-white text-black dark:bg-gray-800 dark:text-white hidden" style="background-color: white; color: black;">
                         <div class="flex items-center justify-center">
                             <span id="verificationIcon" class="mr-2"></span>
-                            <span id="verificationMessage" class="font-medium"></span>
+                            <span id="verificationMessage" class="font-medium" style="color: inherit !important;"></span>
                         </div>
-                        <div id="verificationDetails" class="mt-2 text-sm"></div>
+                        <div id="verificationDetails" class="mt-2 text-sm" style="color: inherit !important;"></div>
                     </div>
                     
                     <div class="flex justify-center space-x-4">
@@ -569,29 +569,43 @@
             
             box.classList.remove("hidden");
             
-            // Force neutral error block - white background, black text, black border
-            box.style.background = "#ffffff";
-            box.style.color = "#000000";
-            box.style.border = "1px solid #000000";
+            // Check if dark theme is active
+            const isDarkTheme = document.documentElement.classList.contains('dark') || 
+                               localStorage.getItem('theme') === 'dark';
+            
+            // Set colors based on theme
+            if (isDarkTheme) {
+                box.style.background = "#1f2937";
+                box.style.color = "#ffffff";
+                box.style.border = "1px solid #4b5563";
+                msg.className = "font-medium text-white";
+                details.style.color = "#d1d5db";
+            } else {
+                box.style.background = "#ffffff";
+                box.style.color = "#000000";
+                box.style.border = "1px solid #000000";
+                msg.className = "font-medium text-black";
+                details.style.color = "#374151";
+            }
             
             // Set icon and colors based on type
             if (type === "success") {
                 icon.className = "fas fa-check-circle text-green-500 mr-2";
-                box.style.borderLeft = "4px solid #10b981";
+                box.style.borderLeft = isDarkTheme ? "4px solid #10b981" : "4px solid #10b981";
             } else if (type === "warning") {
                 icon.className = "fas fa-exclamation-triangle text-yellow-500 mr-2";
-                box.style.borderLeft = "4px solid #f59e0b";
+                box.style.borderLeft = isDarkTheme ? "4px solid #f59e0b" : "4px solid #f59e0b";
             } else if (type === "error") {
                 icon.className = "fas fa-exclamation-circle text-red-500 mr-2";
-                box.style.borderLeft = "4px solid #ef4444";
+                box.style.borderLeft = isDarkTheme ? "4px solid #ef4444" : "4px solid #ef4444";
             } else {
                 icon.className = "fas fa-info-circle text-blue-500 mr-2";
-                box.style.borderLeft = "4px solid #3b82f6";
+                box.style.borderLeft = isDarkTheme ? "4px solid #3b82f6" : "4px solid #3b82f6";
             }
             
             msg.textContent = message;
-            msg.className = "font-medium text-black";
-            details.className = "mt-2 text-sm text-black";
+            details.className = "mt-2 text-sm";
+            // Details color already set in the theme section above
         }
 
         // ====================================

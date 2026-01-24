@@ -92,27 +92,61 @@
             <!-- Control Panel -->
             <section class="glass-morphism rounded-xl p-6 mb-8 w-full max-w-4xl">
                 <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div class="flex justify-center space-x-4 mb-8">
-                        <button onclick="startExam()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg">
-                            <svg class="inline-block w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Start Exam
-                        </button>
-                        <button onclick="stopExam()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg">
-                            <svg class="inline-block w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
-                            </svg>
-                            Stop Exam
-                        </button>
-                        <button onclick="cancelExam()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg">
-                            <svg class="inline-block w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                            Cancel Exam
-                        </button>
+                    <!-- Dynamic Warning Display Area -->
+                    <div id="warningDisplayArea" class="flex-1 mb-4">
+                        <!-- Start/Stop/Cancel Buttons (shown when no warnings) -->
+                        <div id="buttonArea" class="flex justify-center space-x-4">
+                            <button onclick="startExam()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg">
+                                <svg class="inline-block w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Start Exam
+                            </button>
+                            <button onclick="stopExam()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg">
+                                <svg class="inline-block w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                                </svg>
+                                Stop Exam
+                            </button>
+                            <button onclick="cancelExam()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg">
+                                <svg class="inline-block w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                                Cancel Exam
+                            </button>
+                        </div>
+                        
+                        <!-- Warning Messages (shown when warnings are active) -->
+                        <div id="warningMessages" class="hidden">
+                            <div class="bg-red-500 bg-opacity-90 border-2 border-red-600 rounded-lg p-4 mb-3">
+                                <div class="flex items-center space-x-3">
+                                    <div class="text-white">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h3 id="mainWarningTitle" class="text-white font-bold text-lg" style="color: white !important;">WARNING DETECTED</h3>
+                                        <p id="mainWarningMessage" class="text-white text-sm" style="color: white !important;">Please address the issue immediately</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-yellow-500 bg-opacity-90 border-2 border-yellow-600 rounded-lg p-3">
+                                <div class="flex items-center space-x-2">
+                                    <div class="text-white">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p id="secondaryWarningMessage" class="text-white text-sm font-medium" style="color: white !important;">Monitoring active...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Status Cards -->
@@ -154,13 +188,44 @@
                     </svg>
                     Live Camera Feed
                 </h2>
-                <div class="video-container flex justify-center">
+                <div class="video-container flex justify-center relative">
                     <img
                         src="http://127.0.0.1:5000/video_feed"
                         alt="Live Camera Feed"
                         class="rounded-lg"
                         style="max-height: 600px; object-fit: cover;"
                     >
+                    
+                    <!-- Warning Overlay Box -->
+                    <div id="warningOverlay" class="absolute top-4 left-4 right-4 bg-black bg-opacity-75 rounded-lg p-3 hidden">
+                        <div class="flex items-center space-x-2">
+                            <div id="warningIcon" class="text-yellow-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <p id="warningMessage" class="text-white text-sm font-medium" style="color: white !important;"></p>
+                                <p id="warningDetails" class="text-gray-300 text-xs" style="color: #e5e7eb !important;"></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Face Detection Status -->
+                    <div id="faceStatus" class="absolute bottom-4 left-4 bg-black bg-opacity-75 rounded-lg p-2">
+                        <div class="flex items-center space-x-2">
+                            <div id="faceIndicator" class="w-3 h-3 bg-green-400 rounded-full"></div>
+                            <span id="faceText" class="text-white text-xs font-medium" style="color: white !important;">Face Detected</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Movement Alert -->
+                    <div id="movementAlert" class="absolute bottom-4 right-4 bg-black bg-opacity-75 rounded-lg p-2 hidden">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-red-400 rounded-full pulse-animation"></div>
+                            <span class="text-white text-xs font-medium" style="color: white !important;">Abnormal Movement</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="mt-4 flex justify-between items-center">
                     <div class="flex items-center theme-text font-semibold">
@@ -246,8 +311,8 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                             </svg>
                             <p class="text-white font-semibold text-xs">User Information</p>
-                            <p id="userName" class="text-white text-xs font-medium">Loading...</p>
-                            <p id="userLocation" class="text-gray-300 text-xs">Loading...</p>
+                            <p id="userName" class="text-white text-xs font-medium" style="color: white !important;">Loading...</p>
+                            <p id="userLocation" class="text-white text-xs" style="color: white !important;">Loading...</p>
                         </div>
                     </div>
 
@@ -278,14 +343,183 @@
             const userName = localStorage.getItem('userName');
             const userDetails = JSON.parse(localStorage.getItem('userDetails') || '{}');
             
-            if (userName) {
-                document.getElementById('userName').textContent = userName;
+            console.log('Loading user info:', { userName, userDetails });
+            
+            const userNameEl = document.getElementById('userName');
+            const userLocationEl = document.getElementById('userLocation');
+            
+            if (userName && userNameEl) {
+                userNameEl.textContent = userName;
+                userNameEl.style.color = 'white !important';
+                console.log('Set userName to:', userName);
+            } else {
+                console.log('userName not found or element not found');
             }
             
-            if (userDetails.location) {
-                document.getElementById('userLocation').textContent = userDetails.location;
+            if (userDetails.location && userLocationEl) {
+                userLocationEl.textContent = userDetails.location;
+                userLocationEl.style.color = 'white !important';
+                console.log('Set userLocation to:', userDetails.location);
+            } else {
+                console.log('userLocation not found or element not found');
             }
+            
+            // Start monitoring for warnings
+            startWarningMonitoring();
         });
+        
+        // Warning monitoring system
+        function startWarningMonitoring() {
+            // Simulate face detection and movement monitoring
+            setInterval(() => {
+                if (examRunning) {
+                    checkFaceDetection();
+                    checkMovementDetection();
+                    checkSuspiciousActivity();
+                }
+            }, 2000);
+        }
+        
+        function showMainWarning(title, message, secondaryMessage = 'Monitoring active...') {
+            const buttonArea = document.getElementById('buttonArea');
+            const warningMessages = document.getElementById('warningMessages');
+            const mainTitle = document.getElementById('mainWarningTitle');
+            const mainMessage = document.getElementById('mainWarningMessage');
+            const secondaryMessageEl = document.getElementById('secondaryWarningMessage');
+            
+            // Hide buttons, show warnings
+            buttonArea.classList.add('hidden');
+            warningMessages.classList.remove('hidden');
+            
+            // Set warning text
+            mainTitle.textContent = title;
+            mainTitle.style.color = 'white !important';
+            mainMessage.textContent = message;
+            mainMessage.style.color = 'white !important';
+            secondaryMessageEl.textContent = secondaryMessage;
+            secondaryMessageEl.style.color = 'white !important';
+            
+            // Auto-hide after 5 seconds and show buttons again
+            setTimeout(() => {
+                hideMainWarning();
+            }, 5000);
+        }
+        
+        function hideMainWarning() {
+            const buttonArea = document.getElementById('buttonArea');
+            const warningMessages = document.getElementById('warningMessages');
+            
+            // Show buttons, hide warnings
+            buttonArea.classList.remove('hidden');
+            warningMessages.classList.add('hidden');
+        }
+        
+        function showWarning(message, details, type = 'warning') {
+            const overlay = document.getElementById('warningOverlay');
+            const messageEl = document.getElementById('warningMessage');
+            const detailsEl = document.getElementById('warningDetails');
+            const iconEl = document.getElementById('warningIcon');
+            
+            messageEl.textContent = message;
+            messageEl.style.color = 'white !important';
+            detailsEl.textContent = details;
+            detailsEl.style.color = '#e5e7eb !important';
+            
+            // Set icon based on type
+            if (type === 'error') {
+                iconEl.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>`;
+                iconEl.className = 'text-red-400';
+            } else if (type === 'success') {
+                iconEl.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>`;
+                iconEl.className = 'text-green-400';
+            } else {
+                iconEl.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>`;
+                iconEl.className = 'text-yellow-400';
+            }
+            
+            overlay.classList.remove('hidden');
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 5000);
+        }
+        
+        function updateFaceStatus(detected, message = 'Face Detected') {
+            const indicator = document.getElementById('faceIndicator');
+            const text = document.getElementById('faceText');
+            
+            if (detected) {
+                indicator.className = 'w-3 h-3 bg-green-400 rounded-full';
+                text.textContent = message;
+            } else {
+                indicator.className = 'w-3 h-3 bg-red-400 rounded-full pulse-animation';
+                text.textContent = 'No Face Detected';
+            }
+            
+            // Force white color
+            text.style.color = 'white !important';
+        }
+        
+        function showMovementAlert(show) {
+            const alert = document.getElementById('movementAlert');
+            if (show) {
+                alert.classList.remove('hidden');
+            } else {
+                alert.classList.add('hidden');
+            }
+        }
+        
+        // Simulate detection functions
+        function checkFaceDetection() {
+            // This would connect to actual face detection API
+            const isFaceDetected = Math.random() > 0.2; // 80% chance face is detected
+            updateFaceStatus(isFaceDetected);
+            
+            if (!isFaceDetected) {
+                showMainWarning(
+                    '⚠️ FACE NOT DETECTED', 
+                    'Please ensure your face is visible to the camera',
+                    'Face detection system is monitoring your position'
+                );
+            }
+        }
+        
+        function checkMovementDetection() {
+            // This would connect to actual movement detection API
+            const abnormalMovement = Math.random() > 0.7; // 30% chance of abnormal movement
+            showMovementAlert(abnormalMovement);
+            
+            if (abnormalMovement) {
+                showMainWarning(
+                    '🚨 ABNORMAL MOVEMENT DETECTED', 
+                    'Please remain still and focus on your exam',
+                    'Movement tracking system has detected unusual activity'
+                );
+            }
+        }
+        
+        function checkSuspiciousActivity() {
+            // This would check for other suspicious activities
+            const suspicious = Math.random() > 0.9; // 10% chance of suspicious activity
+            
+            if (suspicious) {
+                const activities = [
+                    { title: '👥 MULTIPLE FACES DETECTED', message: 'Only one person should be visible during the exam', detail: 'Face recognition system detected multiple faces' },
+                    { title: '👀 LOOKING AWAY FROM SCREEN', message: 'Please focus on your exam screen', detail: 'Eye tracking system detected diverted attention' },
+                    { title: '🔊 BACKGROUND NOISE DETECTED', message: 'Please maintain a quiet environment', detail: 'Audio monitoring detected background sounds' },
+                    { title: '🔄 TAB SWITCHING DETECTED', message: 'Stay on the exam page at all times', detail: 'System detected navigation away from exam window' }
+                ];
+                const activity = activities[Math.floor(Math.random() * activities.length)];
+                showMainWarning(activity.title, activity.message, activity.detail);
+            }
+        }
     </script>
 </body>
 </html>

@@ -9,6 +9,9 @@ function cancelExam() {
     
     // Show confirmation dialog
     if (confirm("Are you sure you want to exit the exam? This will end your current session.")) {
+        // Stop webcam feed
+        stopWebcam();
+        
         // Clear any stored data
         localStorage.removeItem('faceVerified');
         localStorage.removeItem('faceRegistered');
@@ -18,6 +21,29 @@ function cancelExam() {
         // Go back to verification page
         window.location.href = '/';
     }
+}
+
+// =====================
+// STOP WEBCAM
+// =====================
+function stopWebcam() {
+    // Find and stop the video feed
+    const videoElements = document.querySelectorAll('img[src*="video_feed"]');
+    videoElements.forEach(img => {
+        img.src = '';
+        img.style.display = 'none';
+    });
+    
+    // Stop the video stream if it exists
+    const videoStream = document.querySelector('#videoElement');
+    if (videoStream && videoStream.srcObject) {
+        videoStream.srcObject.getTracks().forEach(track => track.stop());
+        videoStream.srcObject = null;
+    }
+    
+    // Call backend to stop camera
+    fetch('/stop_camera', { method: 'POST' })
+        .catch(err => console.log('Camera stop request failed:', err));
 }
 
 // =====================
