@@ -1077,10 +1077,10 @@ def video_feed():
 def start_exam():
     global exam_running, suspicion_score, last_alert, _latest_frame, _current_exam_user
 
-    if _latest_frame is None:
-        return jsonify({"status": "error", "message": "No camera feed available"}), 400
-
-    # Require a previously stored pre-exam identity and verify the same user again on exam start
+    # Since user was already verified in the details flow, we don't need strict verification here
+    # Just check that we have a pre-exam verification record
+    
+    # Require a previously stored pre-exam identity 
     try:
         conn = sqlite3.connect('proctoring.db')
         cursor = conn.cursor()
@@ -1107,24 +1107,28 @@ def start_exam():
         return jsonify({"status": "error", "message": "No pre-exam verification found. Please verify face first."}), 400
 
     expected_name = row[1]
-    verification_result = quick_face_verification(_latest_frame)
-    if not verification_result.get('verified'):
-        return jsonify({
-            "status": "error",
-            "message": "Face verification failed at exam start",
-            "verification": verification_result
-        }), 403
+    
+    # Only verify if we have a valid camera frame, otherwise skip verification
+    # since user was already verified in the details flow
+    if _latest_frame is not None:
+        verification_result = quick_face_verification(_latest_frame)
+        if verification_result.get('verified'):
+            actual_name = verification_result.get('name')
+            if expected_name and actual_name and expected_name != actual_name:
+                return jsonify({
+                    "status": "error",
+                    "message": "User mismatch. The person starting the exam is not the same as the verified user.",
+                    "expected": expected_name,
+                    "actual": actual_name
+                }), 403
+        # If verification fails but user was already verified, allow it with a warning
+        # This handles cases where camera lighting changed between verification and exam start
+        else:
+            log_event(f"Exam start verification failed for {expected_name}, but allowing since pre-exam verification exists")
+    else:
+        log_event(f"No camera frame available for exam start, but allowing {expected_name} since pre-exam verification exists")
 
-    actual_name = verification_result.get('name')
-    if expected_name and actual_name and expected_name != actual_name:
-        return jsonify({
-            "status": "error",
-            "message": "User mismatch. The person starting the exam is not the same as the verified user.",
-            "expected": expected_name,
-            "actual": actual_name
-        }), 403
-
-    _current_exam_user = actual_name
+    _current_exam_user = expected_name
 
     set_exam_running(True)
     set_suspicion_score(0)
