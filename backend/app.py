@@ -159,11 +159,6 @@ def user_details():
 # =====================
 # EXAM START PAGE (After workflow completion)
 # =====================
-@app.route("/exam/<path:filename>")
-def exam_static(filename):
-    """Serve static files from frontend directory for the exam page."""
-    return send_from_directory(os.path.join(os.path.dirname(__file__), '..', 'frontend'), filename)
-
 @app.route("/exam/start")
 def exam_start():
     """Start exam page.
@@ -176,10 +171,18 @@ def exam_start():
     # Simple token-based check: frontend passes ?verified=1 after successful verification
     verified = request.args.get('verified')
     if verified != '1':
-        log_event("Unauthorized attempt to access /exam/start without verification token")
+        log_event(f"Unauthorized attempt to access /exam/start without verification token. Query params: {dict(request.args)}")
         return redirect(url_for("home"))
     log_event("Authorized access to /exam/start with verification token")
     return render_template("index.html")
+
+@app.route("/exam/<path:filename>")
+def exam_static(filename):
+    """Serve static files from frontend directory for the exam page."""
+    # Prevent serving index.html through static route
+    if filename == 'index.html':
+        return redirect(url_for("home"))
+    return send_from_directory(os.path.join(os.path.dirname(__file__), '..', 'frontend'), filename)
 
 @app.route("/submit_details", methods=["POST"])
 def submit_details():
@@ -287,31 +290,50 @@ def verify_face_quick_api():
     if _latest_frame is not None:
         # Use the most recent frame from the streaming worker
         frame_to_use = _latest_frame.copy()
+        log_event("Using latest frame from video stream for verification")
     else:
         # Fallback: capture a single frame directly from the default camera
+        log_event("No streaming frame available, attempting direct camera capture")
         try:
-            cap = cv2.VideoCapture(0)
-            if not cap.isOpened():
+            # Try multiple camera indices
+            for camera_index in [0, 1, 2]:
+                log_event(f"Trying camera index {camera_index}")
+                cap = cv2.VideoCapture(camera_index)
+                
+                if not cap.isOpened():
+                    log_event(f"Camera {camera_index} failed to open")
+                    continue
+                
+                # Set camera settings for better capture
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                cap.set(cv2.CAP_PROP_FPS, 30)
+                
+                # Allow camera to warm up
+                import time
+                time.sleep(0.5)
+                
+                ret, frame = cap.read()
+                cap.release()
+                
+                if ret and frame is not None:
+                    frame_to_use = frame
+                    log_event(f"Successfully captured frame from camera {camera_index}")
+                    break
+                else:
+                    log_event(f"Failed to read frame from camera {camera_index}")
+            
+            if frame_to_use is None:
                 return jsonify({
                     "status": "error",
-                    "message": "Unable to access camera for verification"
+                    "message": "Unable to access any camera. Please check camera permissions and ensure no other app is using the camera."
                 })
-
-            ret, frame = cap.read()
-            cap.release()
-
-            if not ret or frame is None:
-                return jsonify({
-                    "status": "error",
-                    "message": "Failed to capture image from camera"
-                })
-
-            frame_to_use = frame
+                
         except Exception as e:
             log_event(f"Camera capture error during quick verification: {str(e)}")
             return jsonify({
                 "status": "error",
-                "message": "Camera error during verification. Please try again."
+                "message": f"Camera error: {str(e)}. Please check camera permissions and try again."
             })
 
     # Read optional flags from request body
@@ -324,6 +346,49 @@ def verify_face_quick_api():
     verification_result = quick_face_verification(frame_to_use)
 
     # Handle different verification statuses
+    if verification_result.get("verified"):
+        # User is verified - means they already exist in the system
+        # Save snapshot for verified user (even if already registered)
+        snapshot_path = None
+        try:
+            snapshots_dir = os.path.join(os.path.dirname(__file__), "snapshots")
+            os.makedirs(snapshots_dir, exist_ok=True)
+
+            import time
+            ts = int(time.time())
+            safe_name = secure_filename(str(verification_result.get('name')))
+            filename = f"{safe_name}_{ts}.jpg"
+            snapshot_path = os.path.join(snapshots_dir, filename)
+
+            ok = cv2.imwrite(snapshot_path, frame_to_use)
+            if ok:
+                conn = sqlite3.connect('proctoring.db')
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS pre_exam_identity (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        snapshot_path TEXT NOT NULL,
+                        verified_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                cursor.execute('''
+                    INSERT INTO pre_exam_identity (name, snapshot_path)
+                    VALUES (?, ?)
+                ''', (verification_result.get('name'), snapshot_path))
+                conn.commit()
+                conn.close()
+                log_event(f"Snapshot saved for verified user: {verification_result.get('name')}")
+        except Exception as e:
+            log_event(f"Failed to save snapshot: {str(e)}")
+
+        return jsonify({
+            "status": "warning",
+            "message": f"User already exists: {verification_result.get('name', 'Unknown')}. Face already registered.",
+            "verification": verification_result,
+            "snapshot_path": snapshot_path
+        })
+
     if verification_result.get("status") == "already_registered":
         return jsonify({
             "status": "warning",
@@ -338,45 +403,11 @@ def verify_face_quick_api():
             "verification": verification_result
         })
 
-    # ✅ Save snapshot ONLY for verified user
-    snapshot_path = None
-    try:
-        snapshots_dir = os.path.join(os.path.dirname(__file__), "snapshots")
-        os.makedirs(snapshots_dir, exist_ok=True)
-
-        import time
-        ts = int(time.time())
-        safe_name = secure_filename(str(verification_result.get('name')))
-        filename = f"{safe_name}_{ts}.jpg"
-        snapshot_path = os.path.join(snapshots_dir, filename)
-
-        ok = cv2.imwrite(snapshot_path, frame_to_use)
-        if ok:
-            conn = sqlite3.connect('proctoring.db')
-            cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS pre_exam_identity (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    snapshot_path TEXT NOT NULL,
-                    verified_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            cursor.execute('''
-                INSERT INTO pre_exam_identity (name, snapshot_path)
-                VALUES (?, ?)
-            ''', (verification_result.get('name'), snapshot_path))
-            conn.commit()
-            conn.close()
-            log_event(f"Snapshot saved for verified user: {verification_result.get('name')}")
-    except Exception as e:
-        log_event(f"Failed to save snapshot: {str(e)}")
-
+    # This should not be reached anymore, but keeping for safety
     return jsonify({
-        "status": "success",
-        "message": "Face verified successfully",
-        "verification": verification_result,
-        "snapshot_path": snapshot_path
+        "status": "error",
+        "message": "Unexpected verification state",
+        "verification": verification_result
     })
 
 @app.route("/api/face_recognition/register", methods=["POST"])
@@ -398,31 +429,50 @@ def register_face_api():
 
         if _latest_frame is not None:
             frame_to_use = _latest_frame.copy()
+            log_event("Using latest frame from video stream for registration")
         else:
+            log_event("No streaming frame available, attempting direct camera capture for registration")
             try:
-                cap = cv2.VideoCapture(0)
-                if not cap.isOpened():
+                # Try multiple camera indices
+                for camera_index in [0, 1, 2]:
+                    log_event(f"Trying camera index {camera_index} for registration")
+                    cap = cv2.VideoCapture(camera_index)
+                    
+                    if not cap.isOpened():
+                        log_event(f"Camera {camera_index} failed to open for registration")
+                        continue
+                    
+                    # Set camera settings for better capture
+                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                    cap.set(cv2.CAP_PROP_FPS, 30)
+                    
+                    # Allow camera to warm up
+                    import time
+                    time.sleep(0.5)
+                    
+                    ret, frame = cap.read()
+                    cap.release()
+                    
+                    if ret and frame is not None:
+                        frame_to_use = frame
+                        log_event(f"Successfully captured frame from camera {camera_index} for registration")
+                        break
+                    else:
+                        log_event(f"Failed to read frame from camera {camera_index} for registration")
+                
+                if frame_to_use is None:
                     return jsonify({
                         "status": "error",
-                        "message": "Unable to access camera for registration"
+                        "message": "Unable to access any camera for registration. Please check camera permissions and ensure no other app is using the camera."
                     })
-
-                ret, frame = cap.read()
-                cap.release()
-
-                if not ret or frame is None:
-                    return jsonify({
-                        "status": "error",
-                        "message": "Failed to capture image from camera for registration"
-                    })
-
-                frame_to_use = frame
+                    
             except Exception as e:
                 error_msg = f"Camera error during registration: {str(e)}"
                 log_event(error_msg)
                 return jsonify({
                     "status": "error",
-                    "message": "Camera error during registration. Please try again."
+                    "message": f"Camera error during registration: {str(e)}. Please check camera permissions and try again."
                 })
         
         # Register the face from the selected frame
