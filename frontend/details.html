@@ -248,7 +248,7 @@
                     </div>
                     
                     <!-- Verification Status -->
-                    <div id="verificationStatus" class="mb-4 p-4 rounded-md text-center hidden">
+                    <div id="verificationStatus" class="mb-4 p-4 rounded-lg border border-gray-300 bg-white text-black hidden">
                         <div class="flex items-center justify-center">
                             <span id="verificationIcon" class="mr-2"></span>
                             <span id="verificationMessage" class="font-medium"></span>
@@ -552,23 +552,48 @@
             setTimeout(() => alertDiv.remove(), 5000);
         }
 
+        function showVerificationStatus(type, message) {
+            const box = document.getElementById("verificationStatus");
+            const icon = document.getElementById("verificationIcon");
+            const msg = document.getElementById("verificationMessage");
+            const details = document.getElementById("verificationDetails");
+            
+            box.classList.remove("hidden");
+            
+            // Force neutral error block - white background, black text, black border
+            box.style.background = "#ffffff";
+            box.style.color = "#000000";
+            box.style.border = "1px solid #000000";
+            
+            // Set icon and colors based on type
+            if (type === "success") {
+                icon.className = "fas fa-check-circle text-green-500 mr-2";
+                box.style.borderLeft = "4px solid #10b981";
+            } else if (type === "warning") {
+                icon.className = "fas fa-exclamation-triangle text-yellow-500 mr-2";
+                box.style.borderLeft = "4px solid #f59e0b";
+            } else if (type === "error") {
+                icon.className = "fas fa-exclamation-circle text-red-500 mr-2";
+                box.style.borderLeft = "4px solid #ef4444";
+            } else {
+                icon.className = "fas fa-info-circle text-blue-500 mr-2";
+                box.style.borderLeft = "4px solid #3b82f6";
+            }
+            
+            msg.textContent = message;
+            msg.className = "font-medium text-black";
+            details.className = "mt-2 text-sm text-black";
+        }
+
         // ====================================
         // FACE VERIFICATION (with registration fallback)
         // ====================================
         async function verifyFace() {
-            const verificationStatus = document.getElementById('verificationStatus');
-            const verificationIcon = document.getElementById('verificationIcon');
-            const verificationMessage = document.getElementById('verificationMessage');
-            const verificationDetails = document.getElementById('verificationDetails');
             const verifyBtn = document.getElementById('verifyBtn');
-
-            verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-white border-l-4 border-blue-500';
-            verificationIcon.className = 'fas fa-spinner fa-spin text-blue-500';
-            verificationMessage.textContent = 'Verifying...';
-            verificationMessage.className = 'font-medium text-black';
-            verificationDetails.textContent = 'Please wait while we verify your identity';
-            verificationDetails.className = 'mt-2 text-sm text-black';
-            verificationStatus.classList.remove('hidden');
+            
+            // Show loading status
+            showVerificationStatus("info", "Verifying... Please wait.");
+            document.getElementById('verificationDetails').textContent = 'Capturing your image...';
 
             verifyBtn.disabled = true;
             verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Verifying...';
@@ -588,7 +613,7 @@
                     throw new Error('Name is required. Please go back and enter your name.');
                 }
 
-                verificationDetails.textContent = 'Capturing your image...';
+                document.getElementById('verificationDetails').textContent = 'Processing verification...';
 
                 let verifyResponse;
                 try {
@@ -617,106 +642,94 @@
                     throw new Error('Invalid response from server. Please try again.');
                 }
 
-                const v = data.verification || {};
-
-                if (v.status === 'verified' || v.verified) {
-                    verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-white border-l-4 border-green-500';
-                    verificationIcon.className = 'fas fa-check-circle text-green-500';
-                    verificationMessage.textContent = `Verified: ${v.name || name}`;
-                    verificationMessage.className = 'font-medium text-black';
-                    verificationDetails.textContent = 'Face verification successful. Proceeding to exam...';
-                    verificationDetails.className = 'mt-2 text-sm text-black';
-
+                // Handle response based on status
+                if (data.status === "success") {
+                    showVerificationStatus("success", `Face verified successfully: ${data.verification?.name || name}`);
+                    document.getElementById('verificationDetails').textContent = 'Proceeding to exam...';
+                    
                     localStorage.setItem('userName', name);
                     localStorage.setItem('faceRegistered', 'true');
 
                     setTimeout(moveToStep3, 1500);
                     return;
                 }
+                else if (data.status === "warning") {
+                    showVerificationStatus("warning", data.message);
+                    document.getElementById('verificationDetails').textContent = 'Proceeding with existing registration...';
+                    
+                    localStorage.setItem('userName', name);
+                    localStorage.setItem('faceRegistered', 'true');
 
-                if (v.status === 'no_registered_faces' || v.status === 'model_not_trained') {
-                    verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-white border-l-4 border-yellow-500';
-                    verificationIcon.className = 'fas fa-user-plus text-yellow-600';
-                    verificationMessage.textContent = 'Registering face';
-                    verificationMessage.className = 'font-medium text-black';
-                    verificationDetails.textContent = 'No existing face found. Registering your face now...';
-                    verificationDetails.className = 'mt-2 text-sm text-black';
+                    setTimeout(moveToStep3, 1500);
+                    return;
+                }
+                else {
+                    // Handle no_registered_faces or model_not_trained - try registration
+                    const v = data.verification || {};
+                    if (v.status === 'no_registered_faces' || v.status === 'model_not_trained') {
+                        showVerificationStatus("info", "No existing face found. Registering your face now...");
+                        document.getElementById('verificationDetails').textContent = 'Registering...';
 
-                    const registerResponse = await fetch('/api/face_recognition/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name })
-                    });
+                        const registerResponse = await fetch('/api/face_recognition/register', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name })
+                        });
 
-                    const registerData = await registerResponse.json().catch(() => ({}));
-                    console.log('Registration response:', registerData);
+                        const registerData = await registerResponse.json().catch(() => ({}));
+                        console.log('Registration response:', registerData);
 
-                    if (registerData.status === 'success') {
-                        verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-white border-l-4 border-green-500';
-                        verificationIcon.className = 'fas fa-check-circle text-green-500';
-                        verificationMessage.textContent = 'Registration successful';
-                        verificationMessage.className = 'font-medium text-black';
-                        verificationDetails.textContent = registerData.message || `Successfully registered ${name}. Proceeding to exam...`;
-                        verificationDetails.className = 'mt-2 text-sm text-black';
+                        if (registerData.status === 'success') {
+                            showVerificationStatus("success", `Registration successful: ${name}`);
+                            document.getElementById('verificationDetails').textContent = 'Proceeding to exam...';
+                            
+                            localStorage.setItem('userName', name);
+                            localStorage.setItem('faceRegistered', 'true');
 
-                        localStorage.setItem('userName', name);
-                        localStorage.setItem('faceRegistered', 'true');
+                            setTimeout(moveToStep3, 1500);
+                            return;
+                        }
 
-                        setTimeout(moveToStep3, 1500);
-                        return;
+                        if (registerData.status === 'already_registered') {
+                            showVerificationStatus("warning", `User ${name} already exists. Using existing registration.`);
+                            document.getElementById('verificationDetails').textContent = 'Proceeding to exam...';
+                            
+                            localStorage.setItem('userName', name);
+                            localStorage.setItem('faceRegistered', 'true');
+
+                            showAlert('success', 'User already exists. Using existing registration.');
+                            setTimeout(moveToStep3, 1500);
+                            return;
+                        }
+
+                        throw new Error(registerData.message || 'Registration failed. Please try again.');
+                    }
+                    
+                    // Handle other verification errors
+                    if (v.status === 'no_face_detected') {
+                        throw new Error('No face detected. Please ensure your face is clearly visible.');
+                    }
+                    if (v.status === 'poor_lighting' || v.status === 'overexposed' || v.status === 'low_contrast') {
+                        throw new Error(v.message || 'Lighting issue detected. Please adjust lighting and try again.');
+                    }
+                    if (v.status === 'multiple_faces') {
+                        throw new Error('Multiple faces detected. Please ensure only your face is visible.');
+                    }
+                    if (v.status === 'face_too_small') {
+                        throw new Error('Face too small. Move closer to the camera.');
+                    }
+                    if (v.status === 'low_confidence') {
+                        throw new Error('Face recognition confidence too low. Please try again.');
+                    }
+                    if (v.status === 'unauthorized') {
+                        throw new Error('Unauthorized face detected. Access denied.');
                     }
 
-                    if (registerData.status === 'already_registered') {
-                        verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-white border-l-4 border-yellow-500';
-                        verificationIcon.className = 'fas fa-info-circle text-yellow-600';
-                        verificationMessage.textContent = 'User already exists';
-                        verificationMessage.className = 'font-medium text-black';
-                        verificationDetails.textContent = registerData.message || `User ${name} is already registered. Proceeding to exam...`;
-                        verificationDetails.className = 'mt-2 text-sm text-black';
-
-                        localStorage.setItem('userName', name);
-                        localStorage.setItem('faceRegistered', 'true');
-
-                        showAlert('success', 'User already exists. Using existing registration.');
-                        setTimeout(moveToStep3, 1500);
-                        return;
-                    }
-
-                    throw new Error(registerData.message || 'Registration failed. Please try again.');
+                    throw new Error(data.message || 'Face verification failed. Please try again.');
                 }
-
-                if (v.status === 'unauthorized') {
-                    throw new Error('Unauthorized face detected. Access denied.');
-                }
-
-                if (v.status === 'no_face_detected') {
-                    throw new Error('No face detected. Please ensure your face is clearly visible.');
-                }
-
-                if (v.status === 'poor_lighting' || v.status === 'overexposed' || v.status === 'low_contrast') {
-                    throw new Error(v.message || 'Lighting issue detected. Please adjust lighting and try again.');
-                }
-
-                if (v.status === 'low_confidence') {
-                    throw new Error(v.message || 'Face recognition confidence too low. Please try again.');
-                }
-
-                if (v.status === 'multiple_faces') {
-                    throw new Error(v.message || 'Multiple faces detected. Please ensure only your face is visible.');
-                }
-
-                const fallbackMessage = v.message || 'Face verification failed. Please try again.';
-                throw new Error(fallbackMessage);
             } catch (error) {
                 console.error('Verification error:', error);
-
-                verificationStatus.className = 'mb-4 p-4 rounded-md text-center bg-white border-l-4 border-red-500';
-                verificationIcon.className = 'fas fa-exclamation-circle text-red-500';
-                verificationMessage.textContent = 'Verification Failed';
-                verificationMessage.className = 'font-medium text-black';
-                verificationDetails.textContent = error.message || 'An error occurred during verification. Please try again.';
-                verificationDetails.className = 'mt-2 text-sm text-black';
-
+                showVerificationStatus("error", error.message || 'Face verification failed. Please try again.');
                 showAlert('error', error.message || 'Face verification failed. Please try again.');
             } finally {
                 verifyBtn.disabled = false;

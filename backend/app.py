@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, Response, redirect, url_for
+from flask import Flask, render_template, request, jsonify, Response, redirect, url_for, send_from_directory
 from flask_cors import CORS
 import cv2
 import time
@@ -323,43 +323,58 @@ def verify_face_quick_api():
     # Run quick verification on the selected frame
     verification_result = quick_face_verification(frame_to_use)
 
+    # Handle different verification statuses
+    if verification_result.get("status") == "already_registered":
+        return jsonify({
+            "status": "warning",
+            "message": "User already exists. Face already registered.",
+            "verification": verification_result
+        })
+
+    if not verification_result.get("verified"):
+        return jsonify({
+            "status": "error",
+            "message": verification_result.get("message", "Face verification failed. Please try again."),
+            "verification": verification_result
+        })
+
+    # ✅ Save snapshot ONLY for verified user
     snapshot_path = None
-    if store_snapshot and verification_result.get('verified') and verification_result.get('name'):
-        try:
-            snapshots_dir = os.path.join(os.path.dirname(__file__), "snapshots")
-            os.makedirs(snapshots_dir, exist_ok=True)
+    try:
+        snapshots_dir = os.path.join(os.path.dirname(__file__), "snapshots")
+        os.makedirs(snapshots_dir, exist_ok=True)
 
-            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            safe_name = secure_filename(str(verification_result.get('name')))
-            filename = f"pre_exam_{safe_name}_{ts}.jpg"
-            snapshot_path = os.path.join(snapshots_dir, filename)
+        import time
+        ts = int(time.time())
+        safe_name = secure_filename(str(verification_result.get('name')))
+        filename = f"{safe_name}_{ts}.jpg"
+        snapshot_path = os.path.join(snapshots_dir, filename)
 
-            ok = cv2.imwrite(snapshot_path, frame_to_use)
-            if ok:
-                conn = sqlite3.connect('proctoring.db')
-                cursor = conn.cursor()
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS pre_exam_identity (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT NOT NULL,
-                        snapshot_path TEXT NOT NULL,
-                        verified_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    )
-                ''')
-                cursor.execute('''
-                    INSERT INTO pre_exam_identity (name, snapshot_path)
-                    VALUES (?, ?)
-                ''', (verification_result.get('name'), snapshot_path))
-                conn.commit()
-                conn.close()
-        except Exception as e:
-            log_event(f"Failed to store pre-exam snapshot: {str(e)}")
-
-    if verification_result.get('verified'):
-        log_event(f"Face verified: {verification_result.get('name', 'Unknown')}")
+        ok = cv2.imwrite(snapshot_path, frame_to_use)
+        if ok:
+            conn = sqlite3.connect('proctoring.db')
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS pre_exam_identity (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    snapshot_path TEXT NOT NULL,
+                    verified_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            cursor.execute('''
+                INSERT INTO pre_exam_identity (name, snapshot_path)
+                VALUES (?, ?)
+            ''', (verification_result.get('name'), snapshot_path))
+            conn.commit()
+            conn.close()
+            log_event(f"Snapshot saved for verified user: {verification_result.get('name')}")
+    except Exception as e:
+        log_event(f"Failed to save snapshot: {str(e)}")
 
     return jsonify({
         "status": "success",
+        "message": "Face verified successfully",
         "verification": verification_result,
         "snapshot_path": snapshot_path
     })
@@ -417,6 +432,12 @@ def register_face_api():
             log_event(f"Face registered: {name}")
         elif result.get('status') == 'already_registered':
             log_event(f"Attempt to re-register existing face: {name}")
+            # Return warning status for already registered users
+            return jsonify({
+                "status": "warning",
+                "message": "User already exists",
+                "details": result.get('message', f'User {name} is already registered.')
+            })
         
         return jsonify(result)
             
