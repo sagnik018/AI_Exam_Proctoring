@@ -265,6 +265,14 @@
                         </button>
                         
                         <button 
+                            id="proceedBtn" 
+                            class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors hidden"
+                            onclick="proceedToMain()"
+                        >
+                            <i class="fas fa-arrow-right mr-2"></i>Proceed to Exam
+                        </button>
+                        
+                        <button 
                             id="backBtn" 
                             class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
                         >
@@ -303,6 +311,7 @@
                             <ul class="list-disc pl-5 space-y-1">
                                 <li>Ensure you are in a well-lit, quiet room</li>
                                 <li>Keep your face clearly visible to the camera</li>
+                                <li><strong>During face verification, look directly at the webcam</strong></li>
                                 <li>Close all other applications and browser tabs</li>
                                 <li>Have your ID ready if required</li>
                             </ul>
@@ -615,6 +624,7 @@
 
                 document.getElementById('verificationDetails').textContent = 'Processing verification...';
 
+                // First try backend verification without image
                 let verifyResponse;
                 try {
                     verifyResponse = await fetch('/api/face_recognition/verify_quick', {
@@ -642,90 +652,164 @@
                     throw new Error('Invalid response from server. Please try again.');
                 }
 
+                // If backend needs fallback, capture image from frontend and retry
+                if (data.status === "fallback_needed") {
+                    showVerificationStatus("info", "Backend camera failed. Using frontend camera...");
+                    document.getElementById('verificationDetails').textContent = 'Capturing from frontend camera...';
+                    
+                    // Capture image from video stream
+                    const canvas = document.getElementById('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    context.drawImage(video, 0, 0);
+                    
+                    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+                    
+                    // Retry with frontend image
+                    try {
+                        verifyResponse = await fetch('/api/face_recognition/verify_quick', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                store_snapshot: true,
+                                name: name,
+                                image_data: imageData
+                            })
+                        });
+
+                        if (!verifyResponse.ok) {
+                            const errorData = await verifyResponse.json().catch(() => ({}));
+                            throw new Error(errorData.message || 'Server error during verification with fallback');
+                        }
+
+                        data = await verifyResponse.json();
+                        console.log('Fallback verification response:', data);
+                    } catch (fetchError) {
+                        throw new Error('Fallback verification failed. Please try again.');
+                    }
+                }
+
                 // Handle response based on status
                 if (data.status === "success") {
                     showVerificationStatus("success", `Face verified successfully: ${data.verification?.name || name}`);
-                    document.getElementById('verificationDetails').textContent = 'Proceeding to exam...';
+                    document.getElementById('verificationDetails').textContent = 'Verification complete. You can now proceed to the exam.';
                     
                     localStorage.setItem('userName', name);
                     localStorage.setItem('faceRegistered', 'true');
 
-                    setTimeout(moveToStep3, 1500);
+                    // Show proceed button instead of auto-redirecting
+                    document.getElementById('verifyBtn').classList.add('hidden');
+                    document.getElementById('proceedBtn').classList.remove('hidden');
                     return;
                 }
                 else if (data.status === "warning") {
                     showVerificationStatus("warning", data.message);
-                    document.getElementById('verificationDetails').textContent = 'Proceeding with existing registration...';
+                    document.getElementById('verificationDetails').textContent = 'Verification complete. You can now proceed to the exam.';
                     
                     localStorage.setItem('userName', name);
                     localStorage.setItem('faceRegistered', 'true');
 
-                    setTimeout(moveToStep3, 1500);
+                    // Show proceed button instead of auto-redirecting
+                    document.getElementById('verifyBtn').classList.add('hidden');
+                    document.getElementById('proceedBtn').classList.remove('hidden');
                     return;
                 }
                 else {
-                    // Handle no_registered_faces or model_not_trained - try registration
-                    const v = data.verification || {};
-                    if (v.status === 'no_registered_faces' || v.status === 'model_not_trained') {
-                        showVerificationStatus("info", "No existing face found. Registering your face now...");
-                        document.getElementById('verificationDetails').textContent = 'Registering...';
+                    // Directly try registration without showing "no user" messages
+                    showVerificationStatus("info", "Setting up your face recognition...");
+                    document.getElementById('verificationDetails').textContent = 'Registering your face for secure access...';
 
-                        const registerResponse = await fetch('/api/face_recognition/register', {
+                    // First try registration without image
+                    let registerResponse;
+                    try {
+                        registerResponse = await fetch('/api/face_recognition/register', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ name })
                         });
 
-                        const registerData = await registerResponse.json().catch(() => ({}));
+                        if (!registerResponse.ok) {
+                            const errorData = await registerResponse.json().catch(() => ({}));
+                            throw new Error(errorData.message || 'Server error during registration');
+                        }
+                    } catch (fetchError) {
+                        throw new Error('Connection error during registration. Please try again.');
+                    }
+
+                    let registerData;
+                    try {
+                        registerData = await registerResponse.json();
                         console.log('Registration response:', registerData);
+                    } catch (parseError) {
+                        throw new Error('Invalid response from server during registration. Please try again.');
+                    }
 
-                        if (registerData.status === 'success') {
-                            showVerificationStatus("success", `Registration successful: ${name}`);
-                            document.getElementById('verificationDetails').textContent = 'Proceeding to exam...';
-                            
-                            localStorage.setItem('userName', name);
-                            localStorage.setItem('faceRegistered', 'true');
+                    // If registration needs fallback, capture image and retry
+                    if (registerData.status === "fallback_needed") {
+                        showVerificationStatus("info", "Using camera for face registration...");
+                        document.getElementById('verificationDetails').textContent = 'Capturing from camera for registration...';
+                        
+                        // Capture image from video stream
+                        const canvas = document.getElementById('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        context.drawImage(video, 0, 0);
+                        
+                        const imageData = canvas.toDataURL('image/jpeg', 0.9);
+                        
+                        // Retry registration with frontend image
+                        try {
+                            registerResponse = await fetch('/api/face_recognition/register', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                    name: name,
+                                    image_data: imageData
+                                })
+                            });
 
-                            setTimeout(moveToStep3, 1500);
-                            return;
+                            if (!registerResponse.ok) {
+                                const errorData = await registerResponse.json().catch(() => ({}));
+                                throw new Error(errorData.message || 'Server error during registration with fallback');
+                            }
+
+                            registerData = await registerResponse.json();
+                            console.log('Fallback registration response:', registerData);
+                        } catch (fetchError) {
+                            throw new Error('Fallback registration failed. Please try again.');
                         }
-
-                        if (registerData.status === 'already_registered') {
-                            showVerificationStatus("warning", `User ${name} already exists. Using existing registration.`);
-                            document.getElementById('verificationDetails').textContent = 'Proceeding to exam...';
-                            
-                            localStorage.setItem('userName', name);
-                            localStorage.setItem('faceRegistered', 'true');
-
-                            showAlert('success', 'User already exists. Using existing registration.');
-                            setTimeout(moveToStep3, 1500);
-                            return;
-                        }
-
-                        throw new Error(registerData.message || 'Registration failed. Please try again.');
-                    }
-                    
-                    // Handle other verification errors
-                    if (v.status === 'no_face_detected') {
-                        throw new Error('No face detected. Please ensure your face is clearly visible.');
-                    }
-                    if (v.status === 'poor_lighting' || v.status === 'overexposed' || v.status === 'low_contrast') {
-                        throw new Error(v.message || 'Lighting issue detected. Please adjust lighting and try again.');
-                    }
-                    if (v.status === 'multiple_faces') {
-                        throw new Error('Multiple faces detected. Please ensure only your face is visible.');
-                    }
-                    if (v.status === 'face_too_small') {
-                        throw new Error('Face too small. Move closer to the camera.');
-                    }
-                    if (v.status === 'low_confidence') {
-                        throw new Error('Face recognition confidence too low. Please try again.');
-                    }
-                    if (v.status === 'unauthorized') {
-                        throw new Error('Unauthorized face detected. Access denied.');
                     }
 
-                    throw new Error(data.message || 'Face verification failed. Please try again.');
+                    if (registerData.status === 'success') {
+                        showVerificationStatus("success", `Face registered successfully: ${name}`);
+                        document.getElementById('verificationDetails').textContent = 'Registration complete. You can now proceed to the exam.';
+                        
+                        localStorage.setItem('userName', name);
+                        localStorage.setItem('faceRegistered', 'true');
+
+                        // Show proceed button instead of auto-redirecting
+                        document.getElementById('verifyBtn').classList.add('hidden');
+                        document.getElementById('proceedBtn').classList.remove('hidden');
+                        return;
+                    }
+
+                    if (registerData.status === 'already_registered' || registerData.status === 'warning') {
+                        showVerificationStatus("warning", `User ${name} already exists. Using existing registration.`);
+                        document.getElementById('verificationDetails').textContent = 'Registration complete. You can now proceed to the exam.';
+                        
+                        localStorage.setItem('userName', name);
+                        localStorage.setItem('faceRegistered', 'true');
+
+                        showAlert('success', 'User already exists. Using existing registration.');
+                        // Show proceed button instead of auto-redirecting
+                        document.getElementById('verifyBtn').classList.add('hidden');
+                        document.getElementById('proceedBtn').classList.remove('hidden');
+                        return;
+                    }
+
+                    throw new Error(registerData.message || 'Registration failed. Please try again.');
                 }
             } catch (error) {
                 console.error('Verification error:', error);
@@ -775,6 +859,10 @@
         // INITIALIZATION
         // ====================================
         document.addEventListener('DOMContentLoaded', () => {
+            // Clear verification flags to ensure fresh start
+            localStorage.removeItem('faceVerified');
+            localStorage.removeItem('userDetailsProvided');
+            
             const savedData = localStorage.getItem('userDetails');
             if (savedData) {
                 try {
@@ -792,9 +880,10 @@
                 }
             }
             
-            if (localStorage.getItem('faceVerified') === 'true') {
-                moveToStep3();
-            }
+            // Always start at Step 1 when visiting / or /exam
+            // The verification flow must be completed each time
+            // Only restore form data, not verification status
+            console.log('Page loaded - starting at Step 1');
             
             const hasSeenRules = localStorage.getItem('hasSeenRules');
             if (!hasSeenRules && examRulesModal) {

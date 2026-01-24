@@ -51,11 +51,11 @@ function updateCalibrationStatus(calibration) {
 // Show Exam Rules Modal
 function showExamRules() {
     const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
     modal.innerHTML = `
-        <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-screen overflow-y-auto">
+        <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-3xl font-bold text-white">📋 Exam Rules to Follow</h2>
+                <h2 class="text-3xl font-bold text-gray-800">📋 Exam Rules to Follow</h2>
                 <button onclick="closeRulesModal()" class="text-gray-500 hover:text-gray-700">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -70,7 +70,7 @@ function showExamRules() {
             
             <!-- Verification Requirements -->
             <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                <h3 class="font-bold text-blue-800 mb-3">� Required Verifications</h3>
+                <h3 class="font-bold text-blue-800 mb-3">✅ Required Verifications</h3>
                 <ul class="space-y-2 text-blue-700">
                     <li class="flex items-start">
                         <span class="text-blue-500 mr-2">✓</span>
@@ -86,27 +86,26 @@ function showExamRules() {
                     </li>
                 </ul>
                     
-                    <div class="bg-green-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-green-800 mb-2">🎯 Examination Protocol</h4>
-                        <ul class="space-y-2 text-green-700">
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>Follow all examiner instructions</span>
-                            </li>
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>Stay within camera frame at all times</span>
-                            </li>
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>Ensure good lighting and visibility</span>
-                            </li>
-                            <li class="flex items-start">
-                                <span class="text-red-500 mr-2">•</span>
-                                <span>Report technical issues immediately</span>
-                            </li>
-                        </ul>
-                    </div>
+                <div class="bg-green-50 p-4 rounded-lg mt-4">
+                    <h4 class="font-semibold text-green-800 mb-2">🎯 Examination Protocol</h4>
+                    <ul class="space-y-2 text-green-700">
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">•</span>
+                            <span>Follow all examiner instructions</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">•</span>
+                            <span>Stay within camera frame at all times</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">•</span>
+                            <span>Ensure good lighting and visibility</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">•</span>
+                            <span>Report technical issues immediately</span>
+                        </li>
+                    </ul>
                 </div>
             </div>
             
@@ -124,7 +123,7 @@ function showExamRules() {
             <div class="flex justify-between items-center">
                 <div class="flex items-center space-x-2">
                     <input type="checkbox" id="rulesAccepted" class="w-4 h-4 text-blue-600">
-                    <label for="rulesAccepted" class="text-white font-medium">
+                    <label for="rulesAccepted" class="text-gray-800 font-medium">
                         I have read and understood all exam rules
                     </label>
                 </div>
@@ -160,9 +159,6 @@ function acceptRules() {
     
     closeRulesModal();
     showNotification("Rules accepted! You can now start the exam.", "success");
-    
-    // Optionally start exam automatically
-    // startExamWithVerification();
 }
 
 function closeRulesModal() {

@@ -1,4 +1,17 @@
 // =====================
+// CANCEL EXAM
+// =====================
+function cancelExam() {
+    // Stop exam if running
+    if (examRunning) {
+        stopExam();
+    }
+    
+    // Go back to verification page
+    window.location.href = '/';
+}
+
+// =====================
 // START EXAM
 // =====================
 let examRunning = false;
