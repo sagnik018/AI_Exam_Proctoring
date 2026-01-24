@@ -103,15 +103,22 @@ class FaceRecognitionSystem:
                 
                 # Debug logging for lighting values
                 print(f"[LIGHTING_DEBUG] Brightness: {brightness:.1f}, Contrast: {contrast:.1f}")
+                print(f"[FRAME_DEBUG] Frame shape: {frame.shape}, Min: {frame.min()}, Max: {frame.max()}, Mean: {frame.mean():.1f}")
+                
+                # Check if frame is completely black (camera capture issue)
+                if brightness < 5:
+                    print(f"[FRAME_DEBUG] Frame appears to be black, possible camera capture issue")
+                    # Don't immediately fail, try to detect faces anyway
+                    # Sometimes face detection works even with low brightness
                 
                 # More lenient lighting thresholds for normal room conditions
-                if brightness < 30:
-                    print(f"[LIGHTING_DEBUG] Poor lighting detected: {brightness:.1f} < 30")
+                if brightness < 5:  # Only fail if truly dark (camera issue)
+                    print(f"[LIGHTING_DEBUG] Very poor lighting detected: {brightness:.1f} < 5")
                     return {
                         'status': 'poor_lighting',
-                        'message': 'Face not visible due to very poor lighting. Please ensure some lighting is available.',
+                        'message': 'Camera capture issue detected. The backend camera is not working properly.',
                         'verified': False,
-                        'lighting_advice': 'Turn on room lights or use natural lighting'
+                        'lighting_advice': 'Please use the frontend camera fallback or check camera connection'
                     }
                 elif brightness > 240:
                     print(f"[LIGHTING_DEBUG] Overexposed detected: {brightness:.1f} > 240")
@@ -121,8 +128,8 @@ class FaceRecognitionSystem:
                         'verified': False,
                         'lighting_advice': 'Reduce bright lighting or adjust camera position'
                     }
-                elif contrast < 15:
-                    print(f"[LIGHTING_DEBUG] Low contrast detected: {contrast:.1f} < 15")
+                elif contrast < 5:  # Very low threshold
+                    print(f"[LIGHTING_DEBUG] Low contrast detected: {contrast:.1f} < 5")
                     return {
                         'status': 'low_contrast',
                         'message': 'Poor contrast affecting face detection. Please improve lighting slightly.',

@@ -353,16 +353,20 @@ def verify_face_quick_api():
                         import time
                         time.sleep(1.0)
                         
-                        # Try reading multiple frames
-                        for attempt in range(3):
+                        # Try reading multiple frames with different settings
+                        for attempt in range(5):  # More attempts
                             ret, frame = cap.read()
                             if ret and frame is not None:
-                                frame_to_use = frame
-                                log_event(f"Successfully captured frame from camera {camera_index} with backend {backend}")
-                                cap.release()
-                                break
-                            time.sleep(0.2)
-                        
+                                # Check if frame is not completely black
+                                if frame.mean() > 10:  # Frame has some content
+                                    frame_to_use = frame
+                                    log_event(f"Successfully captured valid frame from camera {camera_index} with backend {backend} (mean: {frame.mean():.1f})")
+                                    cap.release()
+                                    break
+                                else:
+                                    log_event(f"Frame {attempt} from camera {camera_index} appears dark (mean: {frame.mean():.1f})")
+                            time.sleep(0.3)  # Longer wait between attempts
+                            
                         cap.release()
                         if frame_to_use is not None:
                             break
@@ -383,6 +387,14 @@ def verify_face_quick_api():
                     "status": "fallback_needed",
                     "message": f"Camera initialization failed: {str(e)}. System will use frontend camera as fallback."
                 })
+
+    # Check if frame is valid (not completely black)
+    if frame_to_use is not None and frame_to_use.mean() < 10:
+        log_event(f"Captured frame appears black (mean: {frame_to_use.mean():.1f}), forcing frontend fallback")
+        return jsonify({
+            "status": "fallback_needed",
+            "message": "Backend camera captured dark frame. Using frontend camera as fallback."
+        })
 
     # Read optional flags from request body
     store_snapshot = bool(data.get("store_snapshot", False))
