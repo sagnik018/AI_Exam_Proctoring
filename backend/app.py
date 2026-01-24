@@ -473,6 +473,7 @@ def register_face_api():
     try:
         data = request.get_json()
         name = data.get('name', '').strip()
+        frontend_image = data.get('image_data')  # base64 encoded image
         
         if not name:
             return jsonify({
@@ -484,13 +485,36 @@ def register_face_api():
         # otherwise capture a fresh frame from the default camera.
         frame_to_use = None
 
-        if _latest_frame is not None:
+        if frontend_image:
+            # Use frontend image if provided
+            try:
+                import base64
+                # Decode base64 image
+                image_data = base64.b64decode(frontend_image.split(',')[1]) if ',' in frontend_image else base64.b64decode(frontend_image)
+                import numpy as np
+                frame_array = np.frombuffer(image_data, dtype=np.uint8)
+                frame_to_use = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
+                
+                if frame_to_use is None:
+                    return jsonify({
+                        "status": "error",
+                        "message": "Failed to decode image from frontend"
+                    })
+                
+                log_event("Using image data from frontend for registration")
+            except Exception as e:
+                log_event(f"Error processing frontend image: {str(e)}")
+                return jsonify({
+                    "status": "error",
+                    "message": f"Failed to process image from frontend: {str(e)}"
+                })
+        elif _latest_frame is not None:
             frame_to_use = _latest_frame.copy()
             log_event("Using latest frame from video stream for registration")
         else:
             log_event("No streaming frame available, attempting direct camera capture for registration")
             try:
-                # Try multiple camera indices
+                # Try multiple camera indices with better error handling
                 for camera_index in [0, 1, 2]:
                     log_event(f"Trying camera index {camera_index} for registration")
                     cap = cv2.VideoCapture(camera_index)
@@ -506,30 +530,33 @@ def register_face_api():
                     
                     # Allow camera to warm up
                     import time
-                    time.sleep(0.5)
+                    time.sleep(1.0)
                     
-                    ret, frame = cap.read()
+                    # Try multiple frame reads
+                    for attempt in range(3):
+                        ret, frame = cap.read()
+                        if ret and frame is not None and frame.mean() > 10:
+                            frame_to_use = frame
+                            log_event(f"Successfully captured valid frame from camera {camera_index} for registration")
+                            break
+                        time.sleep(0.2)
+                    
                     cap.release()
-                    
-                    if ret and frame is not None:
-                        frame_to_use = frame
-                        log_event(f"Successfully captured frame from camera {camera_index} for registration")
+                    if frame_to_use is not None:
                         break
-                    else:
-                        log_event(f"Failed to read frame from camera {camera_index} for registration")
                 
                 if frame_to_use is None:
                     return jsonify({
-                        "status": "error",
-                        "message": "Unable to access any camera for registration. Please check camera permissions and ensure no other app is using the camera."
+                        "status": "fallback_needed",
+                        "message": "Backend camera access failed for registration. Please ensure camera permissions or the system will use frontend camera as fallback."
                     })
                     
             except Exception as e:
                 error_msg = f"Camera error during registration: {str(e)}"
                 log_event(error_msg)
                 return jsonify({
-                    "status": "error",
-                    "message": f"Camera error during registration: {str(e)}. Please check camera permissions and try again."
+                    "status": "fallback_needed",
+                    "message": f"Camera initialization failed: {str(e)}. System will use frontend camera as fallback."
                 })
         
         # Register the face from the selected frame
@@ -537,12 +564,44 @@ def register_face_api():
         
         if result.get('status') == 'success':
             log_event(f"Face registered: {name}")
+            # Save snapshot for successful registration
+            try:
+                snapshots_dir = os.path.join(os.path.dirname(__file__), "snapshots")
+                os.makedirs(snapshots_dir, exist_ok=True)
+
+                import time
+                ts = int(time.time())
+                safe_name = secure_filename(name)
+                filename = f"{safe_name}_{ts}.jpg"
+                snapshot_path = os.path.join(snapshots_dir, filename)
+
+                ok = cv2.imwrite(snapshot_path, frame_to_use)
+                if ok:
+                    conn = sqlite3.connect('proctoring.db')
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS pre_exam_identity (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL,
+                            snapshot_path TEXT NOT NULL,
+                            verified_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                        )
+                    ''')
+                    cursor.execute('''
+                        INSERT INTO pre_exam_identity (name, snapshot_path)
+                        VALUES (?, ?)
+                    ''', (name, snapshot_path))
+                    conn.commit()
+                    conn.close()
+                    log_event(f"Snapshot saved for registered user: {name}")
+            except Exception as e:
+                log_event(f"Failed to save registration snapshot: {str(e)}")
         elif result.get('status') == 'already_registered':
             log_event(f"Attempt to re-register existing face: {name}")
             # Return warning status for already registered users
             return jsonify({
                 "status": "warning",
-                "message": "User already exists",
+                "message": f"User {name} already exists. Face already registered.",
                 "details": result.get('message', f'User {name} is already registered.')
             })
         
