@@ -101,31 +101,45 @@ class FaceRecognitionSystem:
                 brightness = np.mean(gray)
                 contrast = np.std(gray)
                 
-                # Lighting warnings
-                if brightness < 50:
+                # Debug logging for lighting values
+                print(f"[LIGHTING_DEBUG] Brightness: {brightness:.1f}, Contrast: {contrast:.1f}")
+                
+                # More lenient lighting thresholds for normal room conditions
+                if brightness < 30:
+                    print(f"[LIGHTING_DEBUG] Poor lighting detected: {brightness:.1f} < 30")
                     return {
                         'status': 'poor_lighting',
-                        'message': 'Face not visible due to poor lighting. Please move to a room with optimal lighting.',
+                        'message': 'Face not visible due to very poor lighting. Please ensure some lighting is available.',
                         'verified': False,
-                        'lighting_advice': 'Move to a well-lit room or turn on more lights'
+                        'lighting_advice': 'Turn on room lights or use natural lighting'
                     }
-                elif brightness > 200:
+                elif brightness > 240:
+                    print(f"[LIGHTING_DEBUG] Overexposed detected: {brightness:.1f} > 240")
                     return {
                         'status': 'overexposed',
-                        'message': 'Face is overexposed due to bright lighting. Please adjust lighting.',
+                        'message': 'Face is overexposed due to very bright lighting. Please adjust lighting.',
                         'verified': False,
-                        'lighting_advice': 'Reduce bright lighting or adjust camera exposure'
+                        'lighting_advice': 'Reduce bright lighting or adjust camera position'
                     }
-                elif contrast < 30:
+                elif contrast < 15:
+                    print(f"[LIGHTING_DEBUG] Low contrast detected: {contrast:.1f} < 15")
                     return {
                         'status': 'low_contrast',
-                        'message': 'Poor contrast affecting face detection. Improve lighting conditions.',
+                        'message': 'Poor contrast affecting face detection. Please improve lighting slightly.',
                         'verified': False,
-                        'lighting_advice': 'Ensure even lighting on your face without shadows'
+                        'lighting_advice': 'Ensure even lighting without heavy shadows'
                     }
                 
-                # Detect faces
-                faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(50, 50))
+                print(f"[LIGHTING_DEBUG] Lighting acceptable: Brightness={brightness:.1f}, Contrast={contrast:.1f}")
+                
+                # Detect faces with more lenient parameters
+                faces = self.face_cascade.detectMultiScale(
+                    gray, 
+                    scaleFactor=1.05,  # More sensitive to different face sizes
+                    minNeighbors=3,     # Less strict neighbor requirement
+                    minSize=(40, 40),   # Smaller minimum face size
+                    maxSize=(400, 400)  # Reasonable maximum face size
+                )
                 
                 if len(faces) == 0:
                     if attempt == max_attempts - 1:
@@ -148,15 +162,15 @@ class FaceRecognitionSystem:
                 x, y, w, h = faces[0]
                 face_roi = gray[y:y+h, x:x+w]
                 
-                # Check if face is properly sized
+                # Check if face is properly sized (more lenient)
                 face_area = w * h
                 frame_area = frame.shape[0] * frame.shape[1]
                 face_ratio = face_area / frame_area
                 
-                if face_ratio < 0.05:  # Face too small
+                if face_ratio < 0.02:  # Face too small (reduced from 0.05)
                     return {
                         'status': 'face_too_small',
-                        'message': 'Face too small or too far from camera. Move closer.',
+                        'message': 'Face too small or too far from camera. Please move closer.',
                         'verified': False,
                         'lighting_advice': 'Move closer to camera for better face visibility'
                     }

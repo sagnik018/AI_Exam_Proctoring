@@ -281,66 +281,111 @@ def verify_face_quick_api():
     Uses the latest streaming frame when available, otherwise captures
     a fresh frame directly from the camera so verification does not fail
     with "No camera feed available" when /video_feed is not active.
+    
+    Also accepts base64 image data from frontend as fallback.
     """
     global _latest_frame
 
-    # Determine which frame to use for verification
-    frame_to_use = None
-
-    if _latest_frame is not None:
-        # Use the most recent frame from the streaming worker
-        frame_to_use = _latest_frame.copy()
-        log_event("Using latest frame from video stream for verification")
-    else:
-        # Fallback: capture a single frame directly from the default camera
-        log_event("No streaming frame available, attempting direct camera capture")
+    # Check if frontend sent image data as fallback
+    data = request.get_json(silent=True) or {}
+    frontend_image = data.get('image_data')  # base64 encoded image
+    
+    if frontend_image:
         try:
-            # Try multiple camera indices
-            for camera_index in [0, 1, 2]:
-                log_event(f"Trying camera index {camera_index}")
-                cap = cv2.VideoCapture(camera_index)
-                
-                if not cap.isOpened():
-                    log_event(f"Camera {camera_index} failed to open")
-                    continue
-                
-                # Set camera settings for better capture
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-                cap.set(cv2.CAP_PROP_FPS, 30)
-                
-                # Allow camera to warm up
-                import time
-                time.sleep(0.5)
-                
-                ret, frame = cap.read()
-                cap.release()
-                
-                if ret and frame is not None:
-                    frame_to_use = frame
-                    log_event(f"Successfully captured frame from camera {camera_index}")
-                    break
-                else:
-                    log_event(f"Failed to read frame from camera {camera_index}")
+            import base64
+            # Decode base64 image
+            image_data = base64.b64decode(frontend_image.split(',')[1]) if ',' in frontend_image else base64.b64decode(frontend_image)
+            import numpy as np
+            frame_array = np.frombuffer(image_data, dtype=np.uint8)
+            frame_to_use = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
             
             if frame_to_use is None:
                 return jsonify({
                     "status": "error",
-                    "message": "Unable to access any camera. Please check camera permissions and ensure no other app is using the camera."
+                    "message": "Failed to decode image from frontend"
                 })
-                
+            
+            log_event("Using image data from frontend for verification")
         except Exception as e:
-            log_event(f"Camera capture error during quick verification: {str(e)}")
+            log_event(f"Error processing frontend image: {str(e)}")
             return jsonify({
                 "status": "error",
-                "message": f"Camera error: {str(e)}. Please check camera permissions and try again."
+                "message": f"Failed to process image from frontend: {str(e)}"
             })
+    else:
+        # Determine which frame to use for verification
+        frame_to_use = None
+
+        if _latest_frame is not None:
+            # Use the most recent frame from the streaming worker
+            frame_to_use = _latest_frame.copy()
+            log_event("Using latest frame from video stream for verification")
+        else:
+            # Fallback: capture a single frame directly from the default camera
+            log_event("No streaming frame available, attempting direct camera capture")
+            try:
+                # Try multiple camera indices with different backends
+                camera_attempts = []
+                
+                # Try different camera backends and indices
+                backends = [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_V4L2, cv2.CAP_FFMPEG] if os.name == 'nt' else [cv2.CAP_V4L2, cv2.CAP_FFMPEG]
+                
+                for backend in backends:
+                    for camera_index in [0, 1, 2]:
+                        camera_attempts.append(f"Backend {backend}, Camera {camera_index}")
+                        log_event(f"Trying backend {backend}, camera index {camera_index}")
+                        
+                        # Try with specific backend
+                        cap = cv2.VideoCapture(camera_index + backend)
+                        
+                        if not cap.isOpened():
+                            log_event(f"Camera {camera_index} with backend {backend} failed to open")
+                            cap.release()
+                            continue
+                        
+                        # Set camera settings for better capture
+                        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                        cap.set(cv2.CAP_PROP_FPS, 30)
+                        cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+                        
+                        # Allow camera to warm up
+                        import time
+                        time.sleep(1.0)
+                        
+                        # Try reading multiple frames
+                        for attempt in range(3):
+                            ret, frame = cap.read()
+                            if ret and frame is not None:
+                                frame_to_use = frame
+                                log_event(f"Successfully captured frame from camera {camera_index} with backend {backend}")
+                                cap.release()
+                                break
+                            time.sleep(0.2)
+                        
+                        cap.release()
+                        if frame_to_use is not None:
+                            break
+                    
+                    if frame_to_use is not None:
+                        break
+                
+                if frame_to_use is None:
+                    log_event(f"All camera attempts failed. Tried: {camera_attempts}")
+                    return jsonify({
+                        "status": "fallback_needed",
+                        "message": "Backend camera access failed. Please ensure camera permissions or the system will use frontend camera as fallback."
+                    })
+                    
+            except Exception as e:
+                log_event(f"Camera capture error during quick verification: {str(e)}")
+                return jsonify({
+                    "status": "fallback_needed",
+                    "message": f"Camera initialization failed: {str(e)}. System will use frontend camera as fallback."
+                })
 
     # Read optional flags from request body
-    store_snapshot = False
-    if request.is_json:
-        data = request.get_json(silent=True) or {}
-        store_snapshot = bool(data.get("store_snapshot"))
+    store_snapshot = bool(data.get("store_snapshot", False))
 
     # Run quick verification on the selected frame
     verification_result = quick_face_verification(frame_to_use)
