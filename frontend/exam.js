@@ -7,8 +7,17 @@ function cancelExam() {
         stopExam();
     }
     
-    // Go back to verification page
-    window.location.href = '/';
+    // Show confirmation dialog
+    if (confirm("Are you sure you want to exit the exam? This will end your current session.")) {
+        // Clear any stored data
+        localStorage.removeItem('faceVerified');
+        localStorage.removeItem('faceRegistered');
+        localStorage.removeItem('userName');
+        localStorage.removeItem('userDetailsProvided');
+        
+        // Go back to verification page
+        window.location.href = '/';
+    }
 }
 
 // =====================
@@ -61,6 +70,8 @@ function stopExam() {
 // =====================
 function updateExamStatus(text, color) {
     const statusEl = document.getElementById("examStatus");
+    console.log("Updating exam status:", text, color, statusEl);
+    
     if (statusEl) {
         const colorClasses = {
             green: "bg-green-500",
@@ -69,7 +80,14 @@ function updateExamStatus(text, color) {
         };
         
         statusEl.className = `${colorClasses[color] || colorClasses.gray} bg-opacity-80 rounded-lg px-4 py-2`;
-        statusEl.querySelector("span").innerText = text;
+        const spanEl = statusEl.querySelector("span");
+        if (spanEl) {
+            spanEl.innerText = text;
+        } else {
+            console.error("Span element not found in examStatus");
+        }
+    } else {
+        console.error("examStatus element not found");
     }
 }
 
