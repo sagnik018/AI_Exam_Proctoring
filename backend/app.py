@@ -1073,6 +1073,23 @@ def video_feed():
 # =====================
 # START / STOP EXAM
 # =====================
+@app.route("/stop_camera", methods=["POST"])
+def stop_camera():
+    """Stop the camera feed and release resources"""
+    global _camera, _latest_frame
+    
+    try:
+        if _camera is not None:
+            _camera.release()
+            _camera = None
+            _latest_frame = None
+            logger.info("Camera stopped and resources released")
+        
+        return jsonify({"status": "success", "message": "Camera stopped"})
+    except Exception as e:
+        logger.error(f"Error stopping camera: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route("/start_exam", methods=["POST"])
 def start_exam():
     global exam_running, suspicion_score, last_alert, _latest_frame, _current_exam_user
