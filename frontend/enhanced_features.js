@@ -544,3 +544,13 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(err => console.error(err));
 });
+
+function pushSoftWarning(message) {
+    const alertBox = document.getElementById("alertBox");
+    const alertSection = document.getElementById("alertSection");
+
+    if (!alertBox || !alertSection) return;
+
+    alertSection.classList.remove("hidden");
+    alertBox.innerText = message;
+}

@@ -234,3 +234,44 @@ document.addEventListener("visibilitychange", () => {
         showNotification("Warning: Tab switching detected!", "error");
     }
 });
+
+// =====================
+// LIVE VIDEO WARNING OVERLAY (NON-INTRUSIVE)
+// =====================
+setInterval(() => {
+    fetch("/latest_alert")
+        .then(res => res.json())
+        .then(data => {
+            const overlay = document.getElementById("warningOverlay");
+            const msg = document.getElementById("warningMessage");
+            const details = document.getElementById("warningDetails");
+
+            if (!overlay || !msg || !details) return;
+
+            // Priority-based logic
+            if (data.face_count === 0) {
+                overlay.classList.remove("hidden");
+                msg.innerText = "No face detected";
+                details.innerText = "Please stay visible to the camera";
+            }
+            else if (data.face_count > 1) {
+                overlay.classList.remove("hidden");
+                msg.innerText = "Multiple faces detected";
+                details.innerText = "Only one candidate must be present";
+            }
+            else if (data.head_movement) {
+                overlay.classList.remove("hidden");
+                msg.innerText = "Abnormal head movement";
+                details.innerText = "Please face the screen";
+            }
+            else if (data.audio) {
+                overlay.classList.remove("hidden");
+                msg.innerText = "Background voice detected";
+                details.innerText = "Maintain a silent environment";
+            }
+            else {
+                overlay.classList.add("hidden");
+            }
+        })
+        .catch(() => {});
+}, 800);

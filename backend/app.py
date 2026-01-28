@@ -85,6 +85,17 @@ def get_last_alert_message():
     with _state_lock:
         return _last_alert
 
+def get_alert_payload():
+    with _state_lock:
+        return {
+            "message": _last_alert,
+            "score": _suspicion_score,
+            "face_count": _detected_face_count,
+            "head_movement": _detected_head_suspicious,
+            "audio": _audio_suspicious,
+            "time": time.strftime("%H:%M:%S")
+        }
+
 def set_last_alert(message):
     global _last_alert
     with _state_lock:
@@ -1195,7 +1206,7 @@ def get_score():
 
 @app.route("/latest_alert")
 def get_alert():
-    return jsonify({"message": get_last_alert_message()})
+    return jsonify(get_alert_payload())
 
 
 # =====================
