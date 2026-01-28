@@ -362,10 +362,10 @@ def verify_face_quick_api():
                         
                         # Allow camera to warm up
                         import time
-                        time.sleep(1.0)
+                        time.sleep(2.0)  # Increased warm-up time
                         
                         # Try reading multiple frames with different settings
-                        for attempt in range(5):  # More attempts
+                        for attempt in range(8):  # More attempts
                             ret, frame = cap.read()
                             if ret and frame is not None:
                                 # Check if frame is not completely black
@@ -376,7 +376,7 @@ def verify_face_quick_api():
                                     break
                                 else:
                                     log_event(f"Frame {attempt} from camera {camera_index} appears dark (mean: {frame.mean():.1f})")
-                            time.sleep(0.3)  # Longer wait between attempts
+                            time.sleep(0.5)  # Longer wait between attempts
                             
                         cap.release()
                         if frame_to_use is not None:
@@ -389,14 +389,14 @@ def verify_face_quick_api():
                     log_event(f"All camera attempts failed. Tried: {camera_attempts}")
                     return jsonify({
                         "status": "fallback_needed",
-                        "message": "Backend camera access failed. Please ensure camera permissions or the system will use frontend camera as fallback."
+                        "message": "Backend camera access failed. Using frontend camera for verification..."
                     })
                     
             except Exception as e:
                 log_event(f"Camera capture error during quick verification: {str(e)}")
                 return jsonify({
                     "status": "fallback_needed",
-                    "message": f"Camera initialization failed: {str(e)}. System will use frontend camera as fallback."
+                    "message": "Camera initialization failed. Using frontend camera for verification..."
                 })
 
     # Check if frame is valid (not completely black)
