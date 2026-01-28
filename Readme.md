@@ -305,8 +305,7 @@ python app.py
 - **Better Face Recognition** - Enhanced accuracy and speed
 - **Advanced Analytics** - Detailed behavior analysis
 - **Customizable Rules** - Flexible violation detection
-- **Integration APIs** - Third-party system integration
-
+- **Integration APIs** - Third-party system integration.
 ---
 
 ## 📝 License & Credits
