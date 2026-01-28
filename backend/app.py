@@ -1090,11 +1090,14 @@ def stop_camera():
     global _camera, _latest_frame
     
     try:
-        if _camera is not None:
+        # Check if camera variable exists and is not None
+        if '_camera' in globals() and _camera is not None:
             _camera.release()
             _camera = None
             _latest_frame = None
             logger.info("Camera stopped and resources released")
+        else:
+            logger.info("Camera was not running")
         
         return jsonify({"status": "success", "message": "Camera stopped"})
     except Exception as e:
