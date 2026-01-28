@@ -196,21 +196,6 @@
                         style="max-height: 600px; object-fit: cover;"
                     >
                     
-                    <!-- Warning Overlay Box -->
-                    <div id="warningOverlay" class="absolute top-4 left-4 right-4 bg-black bg-opacity-75 rounded-lg p-3 hidden">
-                        <div class="flex items-center space-x-2">
-                            <div id="warningIcon" class="text-yellow-400">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                                </svg>
-                            </div>
-                            <div class="flex-1">
-                                <p id="warningMessage" class="text-white text-sm font-medium" style="color: white !important;"></p>
-                                <p id="warningDetails" class="text-gray-300 text-xs" style="color: #e5e7eb !important;"></p>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <!-- Face Detection Status -->
                     <div id="faceStatus" class="absolute bottom-4 left-4 bg-black bg-opacity-75 rounded-lg p-2">
                         <div class="flex items-center space-x-2">
@@ -414,43 +399,6 @@
             warningMessages.classList.add('hidden');
         }
         
-        function showWarning(message, details, type = 'warning') {
-            const overlay = document.getElementById('warningOverlay');
-            const messageEl = document.getElementById('warningMessage');
-            const detailsEl = document.getElementById('warningDetails');
-            const iconEl = document.getElementById('warningIcon');
-            
-            messageEl.textContent = message;
-            messageEl.style.color = 'white !important';
-            detailsEl.textContent = details;
-            detailsEl.style.color = '#e5e7eb !important';
-            
-            // Set icon based on type
-            if (type === 'error') {
-                iconEl.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>`;
-                iconEl.className = 'text-red-400';
-            } else if (type === 'success') {
-                iconEl.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>`;
-                iconEl.className = 'text-green-400';
-            } else {
-                iconEl.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                </svg>`;
-                iconEl.className = 'text-yellow-400';
-            }
-            
-            overlay.classList.remove('hidden');
-            
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                overlay.classList.add('hidden');
-            }, 5000);
-        }
-        
         function updateFaceStatus(detected, message = 'Face Detected') {
             const indicator = document.getElementById('faceIndicator');
             const text = document.getElementById('faceText');
@@ -476,49 +424,63 @@
             }
         }
         
-        // Simulate detection functions
+        // Simulate detection functions using real backend data
         function checkFaceDetection() {
             // This would connect to actual face detection API
-            const isFaceDetected = Math.random() > 0.2; // 80% chance face is detected
-            updateFaceStatus(isFaceDetected);
-            
-            if (!isFaceDetected) {
-                showMainWarning(
-                    '⚠️ FACE NOT DETECTED', 
-                    'Please ensure your face is visible to the camera',
-                    'Face detection system is monitoring your position'
-                );
-            }
+            fetch("/latest_alert")
+                .then(res => res.json())
+                .then(data => {
+                    updateFaceStatus(data.face_count > 0, data.face_count > 1 ? 'Multiple Faces' : 'Face Detected');
+                    
+                    if (data.face_count === 0) {
+                        showMainWarning(
+                            '⚠️ FACE NOT DETECTED', 
+                            'Please ensure your face is visible to the camera',
+                            'Face detection system is monitoring your position'
+                        );
+                    } else if (data.face_count > 1) {
+                        showMainWarning(
+                            '👥 MULTIPLE FACES DETECTED', 
+                            'Only one person should be visible during the exam',
+                            'Face recognition system detected multiple faces'
+                        );
+                    }
+                })
+                .catch(() => {});
         }
         
         function checkMovementDetection() {
             // This would connect to actual movement detection API
-            const abnormalMovement = Math.random() > 0.7; // 30% chance of abnormal movement
-            showMovementAlert(abnormalMovement);
-            
-            if (abnormalMovement) {
-                showMainWarning(
-                    '🚨 ABNORMAL MOVEMENT DETECTED', 
-                    'Please remain still and focus on your exam',
-                    'Movement tracking system has detected unusual activity'
-                );
-            }
+            fetch("/latest_alert")
+                .then(res => res.json())
+                .then(data => {
+                    showMovementAlert(data.head_movement);
+                    
+                    if (data.head_movement) {
+                        showMainWarning(
+                            '🚨 ABNORMAL MOVEMENT DETECTED', 
+                            'Please remain still and focus on your exam',
+                            'Movement tracking system has detected unusual activity'
+                        );
+                    }
+                })
+                .catch(() => {});
         }
         
         function checkSuspiciousActivity() {
             // This would check for other suspicious activities
-            const suspicious = Math.random() > 0.9; // 10% chance of suspicious activity
-            
-            if (suspicious) {
-                const activities = [
-                    { title: '👥 MULTIPLE FACES DETECTED', message: 'Only one person should be visible during the exam', detail: 'Face recognition system detected multiple faces' },
-                    { title: '👀 LOOKING AWAY FROM SCREEN', message: 'Please focus on your exam screen', detail: 'Eye tracking system detected diverted attention' },
-                    { title: '🔊 BACKGROUND NOISE DETECTED', message: 'Please maintain a quiet environment', detail: 'Audio monitoring detected background sounds' },
-                    { title: '🔄 TAB SWITCHING DETECTED', message: 'Stay on the exam page at all times', detail: 'System detected navigation away from exam window' }
-                ];
-                const activity = activities[Math.floor(Math.random() * activities.length)];
-                showMainWarning(activity.title, activity.message, activity.detail);
-            }
+            fetch("/latest_alert")
+                .then(res => res.json())
+                .then(data => {
+                    if (data.audio) {
+                        showMainWarning(
+                            '🔊 BACKGROUND NOISE DETECTED', 
+                            'Please maintain a quiet environment',
+                            'Audio monitoring detected background sounds'
+                        );
+                    }
+                })
+                .catch(() => {});
         }
     </script>
 </body>
