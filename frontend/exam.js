@@ -223,14 +223,65 @@ setInterval(updateTimestamp, 1000);
 updateTimestamp(); // Initial call
 
 // =====================
-// REAL TAB SWITCH DETECTION
+// REAL TAB SWITCH DETECTION WITH ENHANCED WARNINGS
 // =====================
+let tabSwitchCount = 0;
+
 document.addEventListener("visibilitychange", () => {
     if (document.hidden && examRunning) {
+        tabSwitchCount++;
+        
+        // Send tab switch notification to backend
         fetch("http://127.0.0.1:5000/tab_switched", {
             method: "POST"
         }).catch(err => console.error(err));
 
-        showNotification("Warning: Tab switching detected!", "error");
+        // Show persistent warning on video feed
+        showTabSwitchWarning(tabSwitchCount);
+        
+        // Show notification popup
+        showNotification(`⚠️ Warning: Tab switching detected! (${tabSwitchCount} total switches)`, "error");
+        
+        // Log the tab switch event
+        console.warn(`Tab switch detected - Total switches: ${tabSwitchCount}`);
     }
 });
+
+// =====================
+// TAB SWITCH WARNING DISPLAY
+// =====================
+function showTabSwitchWarning(switchCount) {
+    const warningMessages = document.getElementById('warningMessages');
+    const mainWarningTitle = document.getElementById('mainWarningTitle');
+    const mainWarningMessage = document.getElementById('mainWarningMessage');
+    const secondaryWarningMessage = document.getElementById('secondaryWarningMessage');
+    const tabSwitchAlert = document.getElementById('tabSwitchAlert');
+    const tabSwitchCountEl = document.getElementById('tabSwitchCount');
+    
+    if (warningMessages) {
+        // Update warning messages in control panel
+        mainWarningTitle.textContent = '⚠️ TAB SWITCH DETECTED ⚠️';
+        mainWarningMessage.textContent = `You have switched tabs ${switchCount} time(s)`;
+        secondaryWarningMessage.textContent = 'Your suspicion score has increased. Please return to the exam immediately!';
+        
+        // Show warning area with pulsing animation
+        warningMessages.classList.remove('hidden');
+        warningMessages.style.animation = 'pulse 1s infinite';
+    }
+    
+    // Show tab switch alert overlay on video feed
+    if (tabSwitchAlert && tabSwitchCountEl) {
+        tabSwitchCountEl.textContent = `Violations: ${switchCount}`;
+        tabSwitchAlert.classList.remove('hidden');
+        
+        // Hide the overlay after 5 seconds if user returns
+        setTimeout(() => {
+            if (!document.hidden) {
+                tabSwitchAlert.classList.add('hidden');
+                if (warningMessages) {
+                    warningMessages.style.animation = 'none';
+                }
+            }
+        }, 5000);
+    }
+}

@@ -39,6 +39,25 @@
             transition: border-color 0.3s ease;
         }
         
+        /* Pulse animation for warnings */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+        
+        @keyframes pulse-animation {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        
         /* Video container */
         .video-container {
             background: rgba(0, 0, 0, 0.1);
@@ -188,6 +207,15 @@
                         <div class="flex items-center space-x-2">
                             <div class="w-3 h-3 bg-red-400 rounded-full pulse-animation"></div>
                             <span class="text-white text-xs font-medium" style="color: white !important;">Abnormal Movement</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Switch Alert Overlay -->
+                    <div id="tabSwitchAlert" class="absolute inset-0 bg-red-600 bg-opacity-40 rounded-lg flex items-center justify-center hidden" style="z-index: 100;">
+                        <div class="text-center bg-red-900 bg-opacity-90 rounded-lg p-6">
+                            <h3 class="text-2xl font-bold text-white mb-2">⚠️ TAB SWITCH DETECTED ⚠️</h3>
+                            <p class="text-white text-sm font-semibold">Return to exam immediately!</p>
+                            <p id="tabSwitchCount" class="text-yellow-300 text-sm mt-3 font-bold">Violations: 0</p>
                         </div>
                     </div>
                 </div>
