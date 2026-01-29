@@ -120,31 +120,10 @@
                         
                         <!-- Warning Messages (shown when warnings are active) -->
                         <div id="warningMessages" class="hidden">
-                            <div class="bg-red-500 bg-opacity-90 border-2 border-red-600 rounded-lg p-4 mb-3">
-                                <div class="flex items-center space-x-3">
-                                    <div class="text-white">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                                        </svg>
-                                    </div>
-                                    <div class="flex-1">
-                                        <h3 id="mainWarningTitle" class="text-white font-bold text-lg" style="color: white !important;">WARNING DETECTED</h3>
-                                        <p id="mainWarningMessage" class="text-white text-sm" style="color: white !important;">Please address the issue immediately</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="bg-yellow-500 bg-opacity-90 border-2 border-yellow-600 rounded-lg p-3">
-                                <div class="flex items-center space-x-2">
-                                    <div class="text-white">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p id="secondaryWarningMessage" class="text-white text-sm font-medium" style="color: white !important;">Monitoring active...</p>
-                                    </div>
-                                </div>
+                            <div class="text-center">
+                                <h3 id="mainWarningTitle" class="font-bold text-lg" style="color: #FFFF00 !important;">WARNING DETECTED</h3>
+                                <p id="mainWarningMessage" class="text-white text-sm" style="color: white !important;">Please address the issue immediately</p>
+                                <p id="secondaryWarningMessage" class="text-white text-sm" style="color: white !important;">Monitoring active...</p>
                             </div>
                         </div>
                     </div>
@@ -376,9 +355,9 @@
             buttonArea.classList.add('hidden');
             warningMessages.classList.remove('hidden');
             
-            // Set warning text
+            // Set warning text with yellow color for main title
             mainTitle.textContent = title;
-            mainTitle.style.color = 'white !important';
+            mainTitle.style.color = '#FFFF00 !important'; // Yellow color
             mainMessage.textContent = message;
             mainMessage.style.color = 'white !important';
             secondaryMessageEl.textContent = secondaryMessage;
